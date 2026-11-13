@@ -1,0 +1,9 @@
+RewriteEngine On
+
+# Si alguien entra a la raíz, sirve el index.html principal
+DirectoryIndex index.html
+
+# Quitar extensión .html de las URLs principales
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([^\.]+)$ $1.html [NC,L]

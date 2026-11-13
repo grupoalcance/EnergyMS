@@ -1,0 +1,9 @@
+RewriteEngine On
+
+# Si alguien entra a /cotizador/, sirve el index.html del cotizador
+DirectoryIndex index.html
+
+# Quitar extensión .php de las URLs del cotizador (ej. /cotizador/panel)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([^\.]+)$ $1.php [NC,L]

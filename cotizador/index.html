@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cotizador Interno | Evoenergy</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --green-brand: #9bb556;
+        --yellow-line: #fbbd30;
+      }
+      body {
+        font-family: "Arial", sans-serif;
+        background-color: #e5e7eb;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+      }
+      .page {
+        background-color: white;
+        width: 100%;
+        max-width: 800px;
+        min-height: 1050px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      input,
+      textarea {
+        font-family: inherit;
+        font-size: inherit;
+        color: inherit;
+      }
+      @media print {
+        @page {
+          margin: 0;
+        }
+        body {
+          background-color: white;
+          padding: 0;
+          margin: 0;
+        }
+        .page {
+          box-shadow: none;
+          max-width: 100%;
+          min-height: auto;
+          page-break-after: avoid;
+          page-break-inside: avoid;
+        }
+        .no-print {
+          display: none !important;
+        }
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+      }
+      header {
+        background-color: #000;
+        color: #fff;
+        padding: 30px 40px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .logo-container {
+        display: flex;
+        flex-direction: column;
+      }
+      .logo-main {
+        font-size: 48px;
+        font-weight: 800;
+        font-style: italic;
+        display: flex;
+        align-items: center;
+        letter-spacing: -2px;
+        line-height: 1;
+      }
+      .logo-main span {
+        color: var(--green-brand);
+        font-style: normal;
+        font-size: 42px;
+        margin-left: 5px;
+      }
+      .logo-sub {
+        font-size: 8px;
+        letter-spacing: 2px;
+        margin-top: 5px;
+        font-weight: 600;
+      }
+      .folio-container {
+        text-align: right;
+      }
+      .folio-title {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 5px;
+      }
+      .folio-number {
+        font-size: 20px;
+        font-weight: 800;
+      }
+      .content {
+        padding: 40px;
+        flex-grow: 1;
+      }
+      .customer-info {
+        display: grid;
+        grid-template-columns: 140px 1fr;
+        row-gap: 15px;
+        margin-bottom: 30px;
+        align-items: end;
+      }
+      .customer-info label {
+        font-weight: 800;
+        font-size: 15px;
+      }
+      .customer-info textarea {
+        width: 100%;
+        border: none;
+        border-bottom: 2px solid var(--yellow-line);
+        padding: 5px 0;
+        outline: none;
+        text-transform: uppercase;
+        resize: none;
+        overflow: hidden;
+      }
+      table.products {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 40px;
+      }
+      table.products th {
+        background-color: var(--green-brand);
+        color: #000;
+        font-weight: 700;
+        padding: 10px;
+        font-size: 13px;
+        border: 1px solid #ccc;
+      }
+      table.products td {
+        border: 1px solid #ccc;
+        padding: 0;
+        height: 70px;
+        vertical-align: middle;
+      }
+      table.products td textarea {
+        width: 100%;
+        height: 100%;
+        border: none;
+        text-align: center;
+        outline: none;
+        padding: 10px;
+        font-weight: 600;
+        resize: none;
+        background-color: transparent;
+        overflow: hidden;
+      }
+      .split-section {
+        display: flex;
+        justify-content: space-between;
+        gap: 40px;
+        margin-bottom: 40px;
+      }
+      .table-mini {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .table-mini td {
+        border: 1px solid #000;
+        height: 35px;
+      }
+      .table-mini td.label {
+        background-color: var(--green-brand);
+        font-weight: 700;
+        font-size: 13px;
+        padding-left: 10px;
+        width: 40%;
+      }
+      .table-mini td.value {
+        width: 60%;
+        text-align: center;
+        font-weight: 700;
+        color: #7b291d;
+      }
+      .table-mini td.value input {
+        width: 100%;
+        height: 100%;
+        border: none;
+        text-align: center;
+        font-weight: 700;
+        color: #7b291d;
+        outline: none;
+      }
+      .left-box {
+        width: 45%;
+      }
+      .right-box {
+        width: 45%;
+      }
+      .cfe-title {
+        font-weight: 800;
+        font-size: 12px;
+        margin-bottom: 5px;
+      }
+      .finance-value {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        width: 100%;
+      }
+      .finance-value input,
+      #iva-display,
+      #total-display {
+        color: #000 !important;
+      }
+      .bottom-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-top: 20px;
+      }
+      .payment-conditions {
+        font-size: 12px;
+      }
+      .black-badge {
+        background-color: #000;
+        color: #fff;
+        padding: 8px 15px;
+        font-weight: 700;
+        display: inline-block;
+        margin-bottom: 10px;
+        font-size: 11px;
+      }
+      .payment-line {
+        margin-bottom: 5px;
+      }
+      .payment-line strong {
+        font-weight: 800;
+      }
+      .agent-info {
+        width: 250px;
+      }
+      .agent-row {
+        display: flex;
+        margin-bottom: -1px;
+      }
+      .agent-label {
+        background-color: #000;
+        color: #fff;
+        font-size: 10px;
+        padding: 8px;
+        width: 130px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        border: 1px solid #000;
+      }
+      .agent-input {
+        flex-grow: 1;
+        border: 1px solid #000;
+      }
+      .agent-input textarea {
+        width: 100%;
+        height: 100%;
+        border: none;
+        padding: 5px;
+        outline: none;
+        resize: none;
+        overflow: hidden;
+      }
+      footer {
+        background-color: #000;
+        color: #fff;
+        padding: 20px 40px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      footer p {
+        margin: 5px 0;
+        text-align: left;
+        margin-left: 50px;
+      }
+      .print-btn {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background-color: #1a202c;
+        color: white;
+        border: none;
+        padding: 15px 25px;
+        border-radius: 50px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        transition: transform 0.2s;
+        z-index: 100;
+      }
+      .print-btn:hover {
+        transform: scale(1.05);
+      }
+      .logo-ems {
+        max-width: 220px;
+        height: auto;
+      }
+      .panel-btn {
+        position: fixed;
+        top: 30px;
+        left: 30px;
+        background-color: white;
+        color: #1a202c;
+        text-decoration: none;
+        padding: 12px 20px;
+        border-radius: 50px;
+        font-size: 14px;
+        font-weight: 700;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s ease;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+      }
+      .panel-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+        border-color: #cbd5e0;
+      }
+    </style>
+  </head>
+  <body>
+    <button class="no-print print-btn" onclick="guardarEImprimir()">
+      🖨️ Imprimir / Guardar PDF
+    </button>
+    <button class="no-print panel-btn" onclick="guardarYVolver()">
+      ← Volver al Panel
+    </button>
+
+    <div class="page">
+      <header>
+        <div class="logo-container">
+          <img
+            src="/img/energy.png"
+            alt="EMS Energy Multiplier System"
+            class="logo-ems"
+          />
+        </div>
+        <div class="folio-container">
+          <div class="folio-title">Cotización</div>
+          <div class="folio-number" id="folio-number">Cargando...</div>
+        </div>
+      </header>
+      <div class="content">
+        <div class="customer-info">
+          <label>NOMBRE:</label>
+          <textarea
+            id="input-cliente"
+            placeholder="Ingresa el nombre del cliente"
+            rows="1"
+            oninput="
+              this.style.height = '';
+              this.style.height = this.scrollHeight + 'px';
+            "
+          ></textarea>
+          <label>DIRECCIÓN:</label>
+          <textarea
+            id="input-direccion"
+            placeholder="Ingresa la dirección"
+            rows="1"
+            oninput="
+              this.style.height = '';
+              this.style.height = this.scrollHeight + 'px';
+            "
+          ></textarea>
+          <label>NO. DE SERVICIO:</label>
+          <textarea
+            id="input-servicio"
+            placeholder="Ingresa el número de servicio CFE"
+            rows="1"
+            oninput="
+              this.style.height = '';
+              this.style.height = this.scrollHeight + 'px';
+            "
+          ></textarea>
+        </div>
+        <table class="products">
+          <thead>
+            <tr>
+              <th style="width: 8%">cant.</th>
+              <th style="width: 25%">Descripción</th>
+              <th style="width: 20%">Garantía de fábrica</th>
+              <th style="width: 25%">Para colocarlo en</th>
+              <th style="width: 22%">Duración</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <textarea
+                  rows="1"
+                  oninput="
+                    this.style.height = '';
+                    this.style.height = this.scrollHeight + 'px';
+                  "
+                >
+1</textarea
+                >
+              </td>
+              <td>
+                <textarea
+                  rows="1"
+                  oninput="
+                    this.style.height = '';
+                    this.style.height = this.scrollHeight + 'px';
+                  "
+                >
+Aparato evoenergy</textarea
+                >
+              </td>
+              <td>
+                <textarea
+                  rows="1"
+                  oninput="
+                    this.style.height = '';
+                    this.style.height = this.scrollHeight + 'px';
+                  "
+                >
+5 años</textarea
+                >
+              </td>
+              <td>
+                <textarea
+                  placeholder="Ej. Servicio trifásico..."
+                  rows="1"
+                  oninput="
+                    this.style.height = '';
+                    this.style.height = this.scrollHeight + 'px';
+                  "
+                ></textarea>
+              </td>
+              <td>
+                <textarea
+                  rows="1"
+                  oninput="
+                    this.style.height = '';
+                    this.style.height = this.scrollHeight + 'px';
+                  "
+                >
+10 a 15 años</textarea
+                >
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="split-section">
+          <div class="left-box">
+            <div class="cfe-title">
+              Una vez colocado se espera un pago a CFE de
+            </div>
+            <table class="table-mini">
+              <tr>
+                <td class="label">Energía:</td>
+                <td class="value">
+                  <input type="text" id="input-energia" placeholder="$0.00" />
+                </td>
+              </tr>
+              <tr>
+                <td class="label">Cargo fijo:</td>
+                <td class="value">
+                  <input type="text" id="input-cargo" placeholder="$0.00" />
+                </td>
+              </tr>
+              <tr>
+                <td class="label">Total a pagar:</td>
+                <td class="value">
+                  <input
+                    type="text"
+                    id="input-total-cfe"
+                    placeholder="$0.00"
+                    readonly
+                    style="color: #7b291d"
+                  />
+                </td>
+              </tr>
+            </table>
+          </div>
+          <div class="right-box" style="margin-top: 20px">
+            <table class="table-mini">
+              <tr>
+                <td class="label">Subtotal:</td>
+                <td class="value finance-value">
+                  <input type="text" id="input-subtotal" placeholder="$0.00" />
+                </td>
+              </tr>
+              <tr>
+                <td class="label">IVA:</td>
+                <td class="value finance-value">
+                  <span id="iva-display">$0.00</span>
+                </td>
+              </tr>
+              <tr>
+                <td class="label">Total:</td>
+                <td class="value finance-value">
+                  <span id="total-display">$0.00</span>
+                </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <div class="bottom-section">
+          <div class="payment-conditions">
+            <div class="black-badge">Condiciones de Pago</div>
+            <div class="payment-line">
+              Anticipo 60%: <strong id="anticipo-display">$0.00</strong>
+            </div>
+            <div class="payment-line">
+              Una vez colocado,<br />el restante:
+              <strong>40% <span id="restante-display">$0.00</span></strong>
+            </div>
+          </div>
+          <div class="agent-info">
+            <div class="agent-row">
+              <div class="agent-label">Nombre del agente de venta:</div>
+              <div class="agent-input">
+                <textarea
+                  id="input-agente-nombre"
+                  rows="1"
+                  oninput="
+                    this.style.height = '';
+                    this.style.height = this.scrollHeight + 'px';
+                  "
+                ></textarea>
+              </div>
+            </div>
+            <div class="agent-row">
+              <div class="agent-label">Teléfono del agente:</div>
+              <div class="agent-input">
+                <textarea
+                  id="input-agente-telefono"
+                  rows="1"
+                  oninput="
+                    this.style.height = '';
+                    this.style.height = this.scrollHeight + 'px';
+                  "
+                ></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer>
+        <p>(871) 417 8277</p>
+        <p>BLVD. INDEPENDENCIA ESQ. CALZ. COLÓN</p>
+      </footer>
+    </div>
+
+    <script>
+      // === 1. CARGAR FOLIO DESDE LA BASE DE DATOS ===
+      let folioActual = 1;
+
+      async function cargarFolio() {
+        try {
+          const response = await fetch("obtener_folio.php");
+          const data = await response.json();
+          folioActual = data.siguiente_folio;
+          document.getElementById("folio-number").innerText = String(
+            folioActual,
+          ).padStart(4, "0");
+        } catch (error) {
+          console.error("Error al obtener el folio:", error);
+          document.getElementById("folio-number").innerText = "0001";
+        }
+      }
+
+      // Ejecutar inmediatamente al abrir la página
+      cargarFolio();
+
+      // === 2. CÁLCULOS Y FORMATOS ===
+      const inputEnergia = document.getElementById("input-energia");
+      const inputCargo = document.getElementById("input-cargo");
+      const inputTotalCfe = document.getElementById("input-total-cfe");
+      const inputSubtotal = document.getElementById("input-subtotal");
+      const ivaDisplay = document.getElementById("iva-display");
+      const totalDisplay = document.getElementById("total-display");
+      const anticipoDisplay = document.getElementById("anticipo-display");
+      const restanteDisplay = document.getElementById("restante-display");
+
+      const mxnFormatter = new Intl.NumberFormat("es-MX", {
+        style: "currency",
+        currency: "MXN",
+      });
+
+      function cleanFormat(e) {
+        let val = e.target.value.replace(/[^0-9.-]+/g, "");
+        e.target.value = val;
+      }
+      function applyFormat(e) {
+        let val = parseFloat(e.target.value.replace(/[^0-9.-]+/g, ""));
+        if (!isNaN(val)) e.target.value = mxnFormatter.format(val);
+        else e.target.value = "";
+      }
+
+      [inputEnergia, inputCargo, inputSubtotal].forEach((input) => {
+        input.addEventListener("focus", cleanFormat);
+        input.addEventListener("blur", applyFormat);
+      });
+
+      function calcularCFE() {
+        let energia =
+          parseFloat(inputEnergia.value.replace(/[^0-9.-]+/g, "")) || 0;
+        let cargo = parseFloat(inputCargo.value.replace(/[^0-9.-]+/g, "")) || 0;
+        if (energia > 0 || cargo > 0)
+          inputTotalCfe.value = mxnFormatter.format(energia + cargo);
+        else inputTotalCfe.value = "";
+      }
+
+      inputEnergia.addEventListener("input", calcularCFE);
+      inputCargo.addEventListener("input", calcularCFE);
+
+      inputSubtotal.addEventListener("input", function (e) {
+        let subtotal = parseFloat(e.target.value.replace(/[^0-9.-]+/g, ""));
+        if (isNaN(subtotal)) subtotal = 0;
+        let iva = subtotal * 0.16;
+        let total = subtotal + iva;
+        let anticipo = total * 0.6;
+        let restante = total * 0.4;
+        ivaDisplay.innerText = mxnFormatter.format(iva);
+        totalDisplay.innerText = mxnFormatter.format(total);
+        anticipoDisplay.innerText = mxnFormatter.format(anticipo);
+        restanteDisplay.innerText = mxnFormatter.format(restante);
+      });
+
+      // === 3. FUNCIONES DE GUARDADO ===
+      async function guardarEImprimir() {
+        const datosCotizacion = {
+          folio: document.getElementById("folio-number").innerText,
+          cliente: document.getElementById("input-cliente").value,
+          direccion: document.getElementById("input-direccion").value,
+          servicio: document.getElementById("input-servicio").value,
+          energia: inputEnergia.value,
+          cargo: inputCargo.value,
+          total_cfe: inputTotalCfe.value,
+          subtotal: inputSubtotal.value,
+          iva: ivaDisplay.innerText,
+          total: totalDisplay.innerText,
+          anticipo: anticipoDisplay.innerText,
+          restante: restanteDisplay.innerText,
+          agente_nombre: document.getElementById("input-agente-nombre").value,
+          agente_telefono: document.getElementById("input-agente-telefono")
+            .value,
+        };
+        try {
+          await fetch("guardar.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(datosCotizacion),
+          });
+          window.print();
+        } catch (error) {
+          console.error("Error al guardar en BD:", error);
+          window.print();
+        }
+      }
+
+      async function guardarYVolver() {
+        const datosCotizacion = {
+          folio: document.getElementById("folio-number").innerText,
+          cliente: document.getElementById("input-cliente").value,
+          direccion: document.getElementById("input-direccion").value,
+          servicio: document.getElementById("input-servicio").value,
+          energia: inputEnergia.value,
+          cargo: inputCargo.value,
+          total_cfe: inputTotalCfe.value,
+          subtotal: inputSubtotal.value,
+          iva: ivaDisplay.innerText,
+          total: totalDisplay.innerText,
+          anticipo: anticipoDisplay.innerText,
+          restante: restanteDisplay.innerText,
+          agente_nombre: document.getElementById("input-agente-nombre").value,
+          agente_telefono: document.getElementById("input-agente-telefono")
+            .value,
+        };
+
+        if (
+          datosCotizacion.cliente.trim() !== "" ||
+          (datosCotizacion.subtotal.trim() !== "$0.00" &&
+            datosCotizacion.subtotal.trim() !== "")
+        ) {
+          try {
+            await fetch("guardar.php", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(datosCotizacion),
+            });
+          } catch (error) {
+            console.error("Error al guardar en BD:", error);
+          }
+        }
+        window.location.href = "panel";
+      }
+    </script>
+  </body>
+</html>
