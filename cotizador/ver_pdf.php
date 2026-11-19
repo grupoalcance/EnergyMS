@@ -3,9 +3,7 @@ session_start();
 if (!isset($_SESSION['logeado']) || $_SESSION['logeado'] !== true) {
     die("Acceso denegado.");
 }
-
 include 'conexion.php';
-
 if (!isset($_GET['id'])) {
     die("ID no especificado.");
 }
@@ -13,13 +11,22 @@ if (!isset($_GET['id'])) {
 $id = intval($_GET['id']);
 $sql = "SELECT * FROM cotizaciones WHERE id = $id";
 $result = $conn->query($sql);
-
 if ($result->num_rows == 0) {
     die("Cotización no encontrada.");
 }
-
 $cotizacion = $result->fetch_assoc();
 $conn->close();
+
+function cleanMoney($val)
+{
+    $num = floatval(preg_replace('/[^0-9.-]/', '', $val));
+    return $num > 0 ? number_format($num, 2, '.', ',') : "";
+}
+
+$energia_val = floatval(preg_replace('/[^0-9.-]/', '', $cotizacion['energia_cfe']));
+$cargo_val = floatval(preg_replace('/[^0-9.-]/', '', $cotizacion['cargo_cfe']));
+$iva_cfe_val = ($energia_val + $cargo_val) * 0.16;
+$iva_cfe_str = $iva_cfe_val > 0 ? number_format($iva_cfe_val, 2, '.', ',') : "";
 ?>
 <!doctype html>
 <html lang="es">
@@ -59,6 +66,14 @@ $conn->close();
             box-sizing: border-box;
         }
 
+        input,
+        textarea {
+            font-family: inherit;
+            font-size: inherit;
+            color: inherit;
+        }
+
+        /* === REGLAS DE IMPRESIÓN === */
         @media print {
             @page {
                 margin: 0;
@@ -85,6 +100,57 @@ $conn->close();
             * {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
+            }
+
+            ::-webkit-input-placeholder {
+                color: transparent !important;
+            }
+
+            ::-moz-placeholder {
+                color: transparent !important;
+            }
+
+            :-ms-input-placeholder {
+                color: transparent !important;
+            }
+
+            ::placeholder {
+                color: transparent !important;
+            }
+
+            .agent-field input {
+                border-bottom: 1px solid #000 !important;
+                color: #000 !important;
+            }
+
+            header {
+                padding: 20px 40px !important;
+            }
+
+            .content {
+                padding: 20px 40px !important;
+            }
+
+            table.products {
+                margin-bottom: 20px !important;
+            }
+
+            .split-section {
+                margin-bottom: 20px !important;
+            }
+
+            .payment-conditions {
+                margin-bottom: 30px !important;
+                padding: 10px 30px !important;
+            }
+
+            .agent-bottom-info {
+                margin-top: 30px !important;
+                margin-bottom: 10px !important;
+            }
+
+            footer {
+                padding: 15px 40px !important;
             }
         }
 
@@ -140,19 +206,15 @@ $conn->close();
             font-size: 15px;
         }
 
-        .campo-fijo {
+        .customer-info textarea {
             width: 100%;
+            border: none;
             border-bottom: 2px solid var(--yellow-line);
             padding: 5px 0;
-            font-weight: 600;
+            outline: none;
             text-transform: uppercase;
-        }
-
-        .campo-fijo-tabla {
-            width: 100%;
-            text-align: center;
-            font-weight: 600;
-            padding: 10px;
+            resize: none;
+            overflow: hidden;
         }
 
         table.products {
@@ -177,11 +239,57 @@ $conn->close();
             vertical-align: middle;
         }
 
+        table.products td textarea {
+            width: 100%;
+            height: 100%;
+            border: none;
+            text-align: center;
+            outline: none;
+            padding: 10px;
+            font-weight: 600;
+            resize: none;
+            background-color: transparent;
+            overflow: hidden;
+        }
+
+        /* === SECCIÓN DIVIDIDA === */
         .split-section {
             display: flex;
             justify-content: space-between;
             gap: 40px;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
+        }
+
+        .left-box,
+        .right-box {
+            width: 45%;
+        }
+
+        .red-title {
+            color: #e53e3e;
+            font-weight: 800;
+            font-size: 14px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        .green-title {
+            color: var(--green-brand);
+            font-weight: 800;
+            font-size: 14px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        .cfe-title {
+            font-weight: 800;
+            font-size: 12px;
+            margin-bottom: 5px;
+            text-align: center;
         }
 
         .table-mini {
@@ -198,95 +306,142 @@ $conn->close();
             background-color: var(--green-brand);
             font-weight: 700;
             font-size: 13px;
-            padding-left: 10px;
+            padding-left: 15px;
             width: 40%;
         }
 
+        /* === ALINEACIÓN PERFECTA === */
         .table-mini td.value {
             width: 60%;
-            text-align: center;
+            padding: 0;
+        }
+
+        .money-cell {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 15px;
+            height: 100%;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .money-cell .currency {
             font-weight: 700;
             color: #7b291d;
         }
 
-        .left-box,
-        .right-box {
-            width: 45%;
-        }
-
-        .cfe-title {
-            font-weight: 800;
-            font-size: 12px;
-            margin-bottom: 5px;
-        }
-
-        .finance-value {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
+        .money-cell input {
+            flex-grow: 1;
+            text-align: right;
             width: 100%;
+            border: none;
+            font-weight: 700;
+            color: #7b291d;
+            outline: none;
+            background-color: transparent;
+            padding: 0;
+            margin: 0;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .finance-color .currency,
+        .finance-color input {
             color: #000 !important;
         }
 
+        /* === CONDICIONES DE PAGO === */
         .bottom-section {
+            margin-top: 30px;
             display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            margin-top: 20px;
+            flex-direction: column;
+            align-items: center;
         }
 
         .payment-conditions {
-            font-size: 12px;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 15px 30px;
+            border-radius: 8px;
+            width: 80%;
+            margin-bottom: 40px;
+            text-align: left;
         }
 
-        .black-badge {
-            background-color: #000;
-            color: #fff;
-            padding: 8px 15px;
-            font-weight: 700;
-            display: inline-block;
-            margin-bottom: 10px;
-            font-size: 11px;
-        }
-
-        .payment-line {
-            margin-bottom: 5px;
-        }
-
-        .payment-line strong {
+        .payment-title {
             font-weight: 800;
-        }
-
-        .agent-info {
-            width: 250px;
-        }
-
-        .agent-row {
-            display: flex;
-            margin-bottom: -1px;
-        }
-
-        .agent-label {
-            background-color: #000;
-            color: #fff;
-            font-size: 10px;
-            padding: 8px;
-            width: 130px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            border: 1px solid #000;
-        }
-
-        .agent-input {
-            flex-grow: 1;
-            border: 1px solid #000;
-            padding: 5px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
+            font-size: 13px;
+            color: #1a202c;
             text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .payment-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            margin-bottom: 8px;
+            color: #4a5568;
+            border-bottom: 1px dashed #cbd5e0;
+            padding-bottom: 5px;
+        }
+
+        .payment-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .payment-amount {
+            display: flex;
+            justify-content: space-between;
+            width: 120px;
+            font-weight: 800;
+            color: #1a202c;
+        }
+
+        /* === VENDEDOR === */
+        .agent-bottom-info {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .agent-field {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            width: 280px;
+        }
+
+        .agent-field input {
+            border: none;
+            border-bottom: 1px solid #ccc;
+            outline: none;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 800;
+            color: #1a202c;
+            padding: 4px 0 2px 0;
+            text-transform: uppercase;
+            background-color: transparent;
+            width: 100%;
+            text-align: center;
+        }
+
+        .agent-field label {
+            font-weight: 700;
+            font-size: 11px;
+            color: #718096;
+            letter-spacing: 0.5px;
         }
 
         footer {
@@ -295,12 +450,27 @@ $conn->close();
             padding: 20px 40px;
             font-size: 11px;
             font-weight: 600;
+            margin-top: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-left {
+            text-align: left;
+        }
+
+        .footer-right {
+            text-align: right;
+        }
+
+        .footer-right a {
+            color: var(--green-brand);
+            text-decoration: none;
         }
 
         footer p {
-            margin: 5px 0;
-            text-align: left;
-            margin-left: 50px;
+            margin: 3px 0;
         }
 
         .print-btn {
@@ -323,7 +493,6 @@ $conn->close();
             transform: scale(1.05);
         }
 
-        /* Botón elegante para regresar al Panel */
         .panel-btn {
             position: fixed;
             top: 30px;
@@ -353,29 +522,29 @@ $conn->close();
 </head>
 
 <body>
-    <button class="no-print print-btn" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+    <button class="no-print print-btn" onclick="guardarEImprimir()">🖨️ Guardar Cambios y PDF</button>
     <a href="panel.php" class="no-print panel-btn">Volver al Panel</a>
+
     <div class="page">
         <header>
-            <div class="logo-container">
-                <img src="/img/energy.png" alt="EMS Energy Multiplier System" class="logo-ems" />
-            </div>
+            <div class="logo-container"><img src="/img/energy.png" alt="EMS" class="logo-ems" /></div>
             <div class="folio-container">
                 <div class="folio-title">Cotización</div>
-                <div class="folio-number"><?php echo htmlspecialchars($cotizacion['folio']); ?></div>
+                <div class="folio-number" id="folio-number"><?php echo htmlspecialchars($cotizacion['folio']); ?></div>
             </div>
         </header>
 
         <div class="content">
             <div class="customer-info">
                 <label>NOMBRE:</label>
-                <div class="campo-fijo"><?php echo htmlspecialchars($cotizacion['cliente']); ?></div>
-
+                <textarea id="input-cliente" rows="1"
+                    oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';"><?php echo htmlspecialchars($cotizacion['cliente']); ?></textarea>
                 <label>DIRECCIÓN:</label>
-                <div class="campo-fijo"><?php echo htmlspecialchars($cotizacion['direccion']); ?></div>
-
+                <textarea id="input-direccion" rows="1"
+                    oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';"><?php echo htmlspecialchars($cotizacion['direccion']); ?></textarea>
                 <label>NO. DE SERVICIO:</label>
-                <div class="campo-fijo"><?php echo htmlspecialchars($cotizacion['servicio_cfe']); ?></div>
+                <textarea id="input-servicio" rows="1"
+                    oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';"><?php echo htmlspecialchars($cotizacion['servicio_cfe']); ?></textarea>
             </div>
 
             <table class="products">
@@ -390,94 +559,238 @@ $conn->close();
                 </thead>
                 <tbody>
                     <tr>
-                        <td>
-                            <div class="campo-fijo-tabla">1</div>
+                        <td><textarea rows="1"
+                                oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';">1</textarea>
                         </td>
-                        <td>
-                            <div class="campo-fijo-tabla">Aparato evoenergy</div>
+                        <td><textarea rows="1"
+                                oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';">Aparato EMS</textarea>
                         </td>
-                        <td>
-                            <div class="campo-fijo-tabla">5 años</div>
+                        <td><textarea rows="1"
+                                oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';">10 años</textarea>
                         </td>
-                        <td>
-                            <div class="campo-fijo-tabla">
-                                <?php echo (trim($cotizacion['servicio_cfe']) != "") ? "Servicio " . htmlspecialchars($cotizacion['servicio_cfe']) : ""; ?>
-                            </div>
+                        <td><textarea id="input-tabla-direccion" rows="1"
+                                oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';"><?php echo htmlspecialchars($cotizacion['direccion']); ?></textarea>
                         </td>
-                        <td>
-                            <div class="campo-fijo-tabla">10 a 15 años</div>
+                        <td><textarea rows="1"
+                                oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';">10 a 15 años</textarea>
                         </td>
                     </tr>
                 </tbody>
             </table>
 
             <div class="split-section">
+                <!-- CFE BOX -->
                 <div class="left-box">
+                    <div class="red-title">Ahorro Estimado</div>
                     <div class="cfe-title">Una vez colocado se espera un pago a CFE de</div>
                     <table class="table-mini">
                         <tr>
                             <td class="label">Energía:</td>
-                            <td class="value"><?php echo htmlspecialchars($cotizacion['energia_cfe']); ?></td>
+                            <td class="value">
+                                <div class="money-cell">
+                                    <span class="currency">$</span>
+                                    <input type="text" id="input-energia"
+                                        value="<?php echo cleanMoney($cotizacion['energia_cfe']); ?>" />
+                                </div>
+                            </td>
                         </tr>
                         <tr>
                             <td class="label">Cargo fijo:</td>
-                            <td class="value"><?php echo htmlspecialchars($cotizacion['cargo_cfe']); ?></td>
+                            <td class="value">
+                                <div class="money-cell">
+                                    <span class="currency">$</span>
+                                    <input type="text" id="input-cargo"
+                                        value="<?php echo cleanMoney($cotizacion['cargo_cfe']); ?>" />
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="label">IVA:</td>
+                            <td class="value">
+                                <div class="money-cell">
+                                    <span class="currency">$</span>
+                                    <input type="text" id="iva-cfe-display" value="<?php echo $iva_cfe_str; ?>"
+                                        readonly />
+                                </div>
+                            </td>
                         </tr>
                         <tr>
                             <td class="label">Total a pagar:</td>
-                            <td class="value" style="color: #7b291d;"><?php echo htmlspecialchars($cotizacion['total_cfe']); ?></td>
+                            <td class="value">
+                                <div class="money-cell">
+                                    <span class="currency">$</span>
+                                    <input type="text" id="input-total-cfe"
+                                        value="<?php echo cleanMoney($cotizacion['total_cfe']); ?>" readonly />
+                                </div>
+                            </td>
                         </tr>
                     </table>
                 </div>
 
-                <div class="right-box" style="margin-top: 20px">
-                    <table class="table-mini">
+                <!-- FINANCE BOX -->
+                <div class="right-box">
+                    <div class="green-title">Precio</div>
+                    <table class="table-mini" style="margin-top: 19px;">
                         <tr>
                             <td class="label">Subtotal:</td>
-                            <td class="value finance-value"><?php echo htmlspecialchars($cotizacion['subtotal']); ?></td>
+                            <td class="value">
+                                <div class="money-cell finance-color">
+                                    <span class="currency">$</span>
+                                    <input type="text" id="input-subtotal"
+                                        value="<?php echo cleanMoney($cotizacion['subtotal']); ?>" />
+                                </div>
+                            </td>
                         </tr>
                         <tr>
                             <td class="label">IVA:</td>
-                            <td class="value finance-value"><span><?php echo htmlspecialchars($cotizacion['iva']); ?></span></td>
+                            <td class="value">
+                                <div class="money-cell finance-color">
+                                    <span class="currency">$</span>
+                                    <input type="text" id="iva-display"
+                                        value="<?php echo cleanMoney($cotizacion['iva']); ?>" readonly />
+                                </div>
+                            </td>
                         </tr>
                         <tr>
                             <td class="label">Total:</td>
-                            <td class="value finance-value"><span><?php echo htmlspecialchars($cotizacion['total']); ?></span></td>
+                            <td class="value">
+                                <div class="money-cell finance-color">
+                                    <span class="currency">$</span>
+                                    <input type="text" id="total-display"
+                                        value="<?php echo cleanMoney($cotizacion['total']); ?>" readonly />
+                                </div>
+                            </td>
                         </tr>
                     </table>
                 </div>
             </div>
 
             <div class="bottom-section">
+                <!-- CONDICIONES DE PAGO JUSTIFICADAS -->
                 <div class="payment-conditions">
-                    <div class="black-badge">Condiciones de Pago</div>
-                    <div class="payment-line">
-                        Anticipo 60%: <strong><?php echo htmlspecialchars($cotizacion['anticipo']); ?></strong>
+                    <div class="payment-title">Condiciones de Pago</div>
+                    <div class="payment-row">
+                        <span>Anticipo 60%:</span>
+                        <span class="payment-amount"><span>$</span><strong
+                                id="anticipo-display"><?php echo cleanMoney($cotizacion['anticipo']); ?></strong></span>
                     </div>
-                    <div class="payment-line">
-                        Una vez colocado,<br />el restante: <strong>40% <span><?php echo htmlspecialchars($cotizacion['restante']); ?></span></strong>
+                    <div class="payment-row">
+                        <span>Una vez colocado, el restante 40%:</span>
+                        <span class="payment-amount"><span>$</span><strong
+                                id="restante-display"><?php echo cleanMoney($cotizacion['restante']); ?></strong></span>
                     </div>
                 </div>
 
-                <div class="agent-info">
-                    <div class="agent-row">
-                        <div class="agent-label">Nombre del agente de venta:</div>
-                        <div class="agent-input"><?php echo htmlspecialchars($cotizacion['agente_nombre']); ?></div>
+                <!-- INFORMACIÓN DEL AGENTE -->
+                <div class="agent-bottom-info">
+                    <div class="agent-field">
+                        <input type="text" id="input-agente-nombre"
+                            value="<?php echo htmlspecialchars($cotizacion['agente_nombre']); ?>" />
+                        <label>AGENTE DE VENTAS</label>
                     </div>
-                    <div class="agent-row">
-                        <div class="agent-label">Teléfono del agente:</div>
-                        <div class="agent-input"><?php echo htmlspecialchars($cotizacion['agente_telefono']); ?></div>
+                    <div class="agent-field">
+                        <input type="text" id="input-agente-telefono"
+                            value="<?php echo htmlspecialchars($cotizacion['agente_telefono']); ?>" />
+                        <label>TELÉFONO</label>
                     </div>
                 </div>
             </div>
         </div>
-
         <footer>
-            <p>(871) 417 8277</p>
-            <p>BLVD. INDEPENDENCIA ESQ. CALZ. COLÓN</p>
+            <div class="footer-left">
+                <p>BLVD. INDEPENDENCIA ESQ. CALZ. COLÓN</p>
+                <p>TORREÓN, COAHUILA</p>
+            </div>
+            <div class="footer-right">
+                <p><a href="https://energymultipliersystem.com/" target="_blank">energymultipliersystem.com</a></p>
+            </div>
         </footer>
     </div>
-</body>
 
+    <script>
+        const inputEnergia = document.getElementById("input-energia"), inputCargo = document.getElementById("input-cargo");
+        const inputTotalCfe = document.getElementById("input-total-cfe"), inputSubtotal = document.getElementById("input-subtotal");
+        const ivaDisplay = document.getElementById("iva-display"), totalDisplay = document.getElementById("total-display");
+        const anticipoDisplay = document.getElementById("anticipo-display"), restanteDisplay = document.getElementById("restante-display");
+
+        // === SINCRONIZAR DIRECCIÓN ===
+        document.getElementById("input-direccion").addEventListener("input", function (e) {
+            const tablaDir = document.getElementById("input-tabla-direccion");
+            tablaDir.value = e.target.value;
+            tablaDir.style.height = '';
+            tablaDir.style.height = tablaDir.scrollHeight + 'px';
+        });
+
+        const numFormatter = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        function cleanFormat(e) { e.target.value = e.target.value.replace(/[^0-9.-]+/g, ""); }
+        function applyFormat(e) {
+            let val = parseFloat(e.target.value.replace(/[^0-9.-]+/g, ""));
+            e.target.value = !isNaN(val) ? numFormatter.format(val) : "";
+        }
+
+        [inputEnergia, inputCargo, inputSubtotal].forEach((input) => {
+            input.addEventListener("focus", cleanFormat); input.addEventListener("blur", applyFormat);
+        });
+
+        // === CÁLCULO CFE ===
+        function calcularCFE() {
+            let energia = parseFloat(inputEnergia.value.replace(/[^0-9.-]+/g, "")) || 0;
+            let cargo = parseFloat(inputCargo.value.replace(/[^0-9.-]+/g, "")) || 0;
+
+            if (energia > 0 || cargo > 0) {
+                let sumaBase = energia + cargo;
+                let ivaCfe = sumaBase * 0.16;
+                let totalCfe = sumaBase + ivaCfe;
+
+                document.getElementById("iva-cfe-display").value = numFormatter.format(ivaCfe);
+                inputTotalCfe.value = numFormatter.format(totalCfe);
+            } else {
+                document.getElementById("iva-cfe-display").value = "";
+                inputTotalCfe.value = "";
+            }
+        }
+        inputEnergia.addEventListener("input", calcularCFE);
+        inputCargo.addEventListener("input", calcularCFE);
+
+        inputSubtotal.addEventListener("input", function (e) {
+            let subtotal = parseFloat(e.target.value.replace(/[^0-9.-]+/g, ""));
+            if (isNaN(subtotal)) subtotal = 0;
+            let iva = subtotal * 0.16, total = subtotal + iva;
+            ivaDisplay.value = numFormatter.format(iva);
+            totalDisplay.value = numFormatter.format(total);
+            anticipoDisplay.innerText = numFormatter.format(total * 0.6);
+            restanteDisplay.innerText = numFormatter.format(total * 0.4);
+        });
+
+        function recolectarDatos() {
+            const curr = (val) => val.trim() !== "" ? "$" + val.trim() : "";
+            return {
+                id: <?php echo $id; ?>,
+                folio: document.getElementById("folio-number").innerText,
+                cliente: document.getElementById("input-cliente").value,
+                direccion: document.getElementById("input-direccion").value,
+                servicio: document.getElementById("input-servicio").value,
+                energia: curr(inputEnergia.value),
+                cargo: curr(inputCargo.value),
+                total_cfe: curr(inputTotalCfe.value),
+                subtotal: curr(inputSubtotal.value),
+                iva: curr(ivaDisplay.value),
+                total: curr(totalDisplay.value),
+                anticipo: curr(anticipoDisplay.innerText),
+                restante: curr(restanteDisplay.innerText),
+                agente_nombre: document.getElementById("input-agente-nombre").value,
+                agente_telefono: document.getElementById("input-agente-telefono").value
+            };
+        }
+
+        async function guardarEImprimir() {
+            try {
+                await fetch("guardar.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(recolectarDatos()) });
+            } catch (error) { console.error("Error:", error); }
+            window.print();
+        }
+    </script>
+</body>
 
 </html>

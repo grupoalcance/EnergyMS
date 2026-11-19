@@ -6,6 +6,7 @@ $data = json_decode(file_get_contents("php://input"), true);
 
 if ($data) {
     // Limpiar los datos para mayor seguridad
+    $id = isset($data['id']) ? intval($data['id']) : null;
     $folio = $conn->real_escape_string($data['folio']);
     $cliente = $conn->real_escape_string($data['cliente']);
     $direccion = $conn->real_escape_string($data['direccion']);
@@ -21,11 +22,31 @@ if ($data) {
     $agente_nombre = $conn->real_escape_string($data['agente_nombre']);
     $agente_telefono = $conn->real_escape_string($data['agente_telefono']);
 
-    // Instrucción para guardar en la base de datos
-    $sql = "INSERT INTO cotizaciones 
-            (folio, cliente, direccion, servicio_cfe, energia_cfe, cargo_cfe, total_cfe, subtotal, iva, total, anticipo, restante, agente_nombre, agente_telefono)
-            VALUES 
-            ('$folio', '$cliente', '$direccion', '$servicio', '$energia', '$cargo', '$total_cfe', '$subtotal', '$iva', '$total', '$anticipo', '$restante', '$agente_nombre', '$agente_telefono')";
+    // Si viene con un ID, significa que estamos editando desde el historial (ver_pdf.php)
+    if ($id) {
+        $sql = "UPDATE cotizaciones SET 
+                cliente = '$cliente', 
+                direccion = '$direccion', 
+                servicio_cfe = '$servicio', 
+                energia_cfe = '$energia', 
+                cargo_cfe = '$cargo', 
+                total_cfe = '$total_cfe', 
+                subtotal = '$subtotal', 
+                iva = '$iva', 
+                total = '$total', 
+                anticipo = '$anticipo', 
+                restante = '$restante', 
+                agente_nombre = '$agente_nombre', 
+                agente_telefono = '$agente_telefono' 
+                WHERE id = $id";
+    }
+    // Si no trae ID, significa que es una cotización nueva desde el cotizador (index.html)
+    else {
+        $sql = "INSERT INTO cotizaciones 
+                (folio, cliente, direccion, servicio_cfe, energia_cfe, cargo_cfe, total_cfe, subtotal, iva, total, anticipo, restante, agente_nombre, agente_telefono)
+                VALUES 
+                ('$folio', '$cliente', '$direccion', '$servicio', '$energia', '$cargo', '$total_cfe', '$subtotal', '$iva', '$total', '$anticipo', '$restante', '$agente_nombre', '$agente_telefono')";
+    }
 
     if ($conn->query($sql) === TRUE) {
         echo json_encode(["status" => "success", "message" => "Guardado correctamente"]);
@@ -37,3 +58,4 @@ if ($data) {
 }
 
 $conn->close();
+?>

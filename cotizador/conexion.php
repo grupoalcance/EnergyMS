@@ -1,6 +1,6 @@
 <?php
 // Credenciales exactas de tu Hostinger
-$host = "localhost";
+$host = "195.35.61.75";
 $user = "u492244081_ventas";
 $pass = "En3rgyMS!";
 $db = "u492244081_energy_ms";
