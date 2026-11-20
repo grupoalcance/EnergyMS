@@ -37,7 +37,7 @@ if (isset($_SESSION['logeado']) && $_SESSION['logeado'] === true) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acceso | EMS</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -47,76 +47,84 @@ if (isset($_SESSION['logeado']) && $_SESSION['logeado'] === true) {
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
         }
 
         .login-box {
-            background: white;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+            background-color: #9bb556;
+            padding: 40px 36px;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
             width: 100%;
-            max-width: 350px;
+            max-width: 360px;
             text-align: center;
+            box-sizing: border-box;
         }
 
-        .login-box h2 {
-            margin-top: 0;
-            color: #1a202c;
-            font-weight: 800;
-        }
-
-        .login-box span {
-            color: #9bb556;
+        .login-logo {
+            max-width: 175px;
+            height: auto;
+            margin-bottom: 24px;
+            display: inline-block;
         }
 
         .input-group {
-            margin-bottom: 20px;
+            margin-bottom: 18px;
             text-align: left;
         }
 
         .input-group label {
             display: block;
             font-size: 13px;
-            font-weight: 600;
-            margin-bottom: 5px;
-            color: #4a5568;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: #111827;
         }
 
         .input-group input {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #cbd5e0;
-            border-radius: 4px;
+            padding: 11px 12px;
+            background-color: #ffffff;
+            border: 1px solid #111827;
+            border-radius: 6px;
             outline: none;
             box-sizing: border-box;
             font-family: inherit;
+            font-size: 14px;
+            color: #111827;
         }
 
         .input-group input:focus {
-            border-color: #9bb556;
+            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
         }
 
         .btn-login {
-            background-color: #9bb556;
-            color: #000;
+            background-color: #000000;
+            color: #ffffff;
             border: none;
             width: 100%;
             padding: 12px;
-            border-radius: 4px;
+            border-radius: 6px;
             font-weight: 700;
             cursor: pointer;
-            transition: 0.2s;
+            transition: background-color 0.2s;
             font-size: 15px;
+            font-family: inherit;
+            margin-top: 4px;
         }
 
         .btn-login:hover {
-            background-color: #8aa34a;
+            background-color: #1f2937;
         }
 
         .error-msg {
-            color: #e53e3e;
+            background-color: #fee2e2;
+            color: #991b1b;
+            padding: 9px 12px;
+            border-radius: 6px;
             font-size: 13px;
-            margin-bottom: 15px;
+            margin-bottom: 16px;
             font-weight: 600;
         }
     </style>
@@ -124,13 +132,18 @@ if (isset($_SESSION['logeado']) && $_SESSION['logeado'] === true) {
 
 <body>
     <div class="login-box">
-        <h2>EMS<span>⚡</span></h2>
+        <img src="../img/energy.png" alt="EMS Logo" class="login-logo">
         <?php if ($error != "")
             echo "<div class='error-msg'>$error</div>"; ?>
         <form method="POST" action="">
-            <div class="input-group"><label>Usuario</label><input type="text" name="usuario" required
-                    autocomplete="off"></div>
-            <div class="input-group"><label>Contraseña</label><input type="password" name="password" required></div>
+            <div class="input-group">
+                <label>Usuario</label>
+                <input type="text" name="usuario" required autocomplete="off">
+            </div>
+            <div class="input-group">
+                <label>Contraseña</label>
+                <input type="password" name="password" required>
+            </div>
             <button type="submit" class="btn-login">Entrar</button>
         </form>
     </div>
