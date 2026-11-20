@@ -1,9 +1,14 @@
 RewriteEngine On
 
-# Si alguien entra a /cotizador/, sirve el index.html del cotizador
-DirectoryIndex index.html
+# Si alguien entra a /cotizador/, abre directamente el login
+DirectoryIndex panel.php
 
-# Quitar extensión .php de las URLs del cotizador (ej. /cotizador/panel)
+# Redirigir si la URL trae .php (ej. /cotizador/dashboard.php -> /cotizador/dashboard)
+RewriteCond %{REQUEST_METHOD} =GET
+RewriteCond %{THE_REQUEST} \s/+(.+?)\.php[\s?] [NC]
+RewriteRule ^ /%1 [R=301,NE,L]
+
+# Cargar el archivo .php internamente cuando se entra sin extensión
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^([^\.]+)$ $1.php [NC,L]
