@@ -132,7 +132,7 @@ if (isset($_SESSION['logeado']) && $_SESSION['logeado'] === true) {
 
 <body>
     <div class="login-box">
-        <img src="../img/energyblack.jpeg" alt="EMS Logo" class="login-logo">
+        <img src="../img/energyblack.png" alt="EMS Logo" class="login-logo">
         <?php if ($error != "")
             echo "<div class='error-msg'>$error</div>"; ?>
         <form method="POST" action="">
