@@ -41,7 +41,7 @@ if (isset($_SESSION['logeado']) && $_SESSION['logeado'] === true) {
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #1a202c;
+            background-color: #000000;
             height: 100vh;
             margin: 0;
             display: flex;
@@ -124,7 +124,7 @@ if (isset($_SESSION['logeado']) && $_SESSION['logeado'] === true) {
 
 <body>
     <div class="login-box">
-        <h2>EMS<span>⚡</span> Admin</h2>
+        <h2>EMS<span>⚡</span></h2>
         <?php if ($error != "")
             echo "<div class='error-msg'>$error</div>"; ?>
         <form method="POST" action="">
