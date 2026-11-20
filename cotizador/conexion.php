@@ -13,5 +13,9 @@ if ($conn->connect_error) {
     die("Error de conexión: " . $conn->connect_error);
 }
 
+// Sincronizar zona horaria de Torreón, Coahuila (UTC-6)
+date_default_timezone_set('America/Monterrey');
+$conn->query("SET time_zone = '-06:00'");
+
 // Configurar para que acepte acentos y caracteres latinos
-$conn->set_charset("utf8");
+$conn->set_charset("utf8mb4");
