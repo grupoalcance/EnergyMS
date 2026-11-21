@@ -54,16 +54,22 @@ $seccion = (isset($_GET['seccion']) && in_array($_GET['seccion'], $secciones_per
     <title>Dashboard | EMS</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';</script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    </script>
     <link rel="stylesheet" href="assets/estilos.css">
 </head>
 
 <body>
 
+    <!-- FONDO OSCURO PARA MENÚ EN MÓVIL -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="cerrarMenuMovil()"></div>
+
     <!-- MENÚ LATERAL -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <img src="../img/energyblack.jpeg" alt="EMS Logo">
+            <button type="button" class="sidebar-close-btn" onclick="cerrarMenuMovil()" aria-label="Cerrar menú">&times;</button>
         </div>
         <ul class="nav-menu">
             <li class="nav-item">
@@ -99,6 +105,13 @@ $seccion = (isset($_GET['seccion']) && in_array($_GET['seccion'], $secciones_per
 
     <!-- CONTENIDO PRINCIPAL -->
     <main class="main-content">
+        <!-- BARRA SUPERIOR SOLO VISIBLE EN CELULAR / TABLET -->
+        <header class="mobile-header">
+            <button type="button" class="mobile-menu-btn" onclick="abrirMenuMovil()" aria-label="Abrir menú">☰</button>
+            <img src="../img/energyblack.jpeg" alt="EMS Logo" class="mobile-header-logo">
+            <div class="mobile-header-spacer"></div>
+        </header>
+
         <div class="content-area">
             <?php include "modulos/{$seccion}.php"; ?>
         </div>
@@ -107,6 +120,17 @@ $seccion = (isset($_GET['seccion']) && in_array($_GET['seccion'], $secciones_per
     <!-- VENTANA EMERGENTE Y SCRIPTS -->
     <?php include 'includes/modal.php'; ?>
     <script src="assets/modal.js"></script>
+    <script>
+        function abrirMenuMovil() {
+            document.getElementById('sidebar')?.classList.add('open');
+            document.getElementById('sidebarBackdrop')?.classList.add('open');
+        }
+
+        function cerrarMenuMovil() {
+            document.getElementById('sidebar')?.classList.remove('open');
+            document.getElementById('sidebarBackdrop')?.classList.remove('open');
+        }
+    </script>
 </body>
 
 </html>

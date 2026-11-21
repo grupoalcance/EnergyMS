@@ -11,7 +11,7 @@ if (!isset($conn)) {
     <div class="alert-banner alert-success">
         <span>✓ Recibo guardado correctamente con el folio
             <strong><?php echo htmlspecialchars($_GET['folio'] ?? ''); ?></strong>.</span>
-        <a href="dashboard.php?seccion=historial" style="color:#166534; font-weight:700;">Ver en Historial →</a>
+        <a href="dashboard.php?seccion=historial" style="color:#166534; font-weight:700;">Ver en Historial</a>
     </div>
 <?php elseif (isset($_GET['error'])): ?>
     <div class="alert-banner alert-error">
@@ -20,7 +20,7 @@ if (!isset($conn)) {
             if ($_GET['error'] === 'formato') {
                 echo "Formato no válido. Solo se permiten archivos PDF, JPG o PNG.";
             } elseif ($_GET['error'] === 'datos') {
-                echo "Por favor verifica los datos y selecciona un archivo.";
+                echo "Por favor verifica los datos, selecciona el tipo de demanda y adjunta un archivo.";
             } else {
                 echo "Ocurrió un error al subir el archivo. Intenta de nuevo.";
             }
@@ -34,8 +34,8 @@ if (!isset($conn)) {
         <div class="form-group full-width" style="margin-bottom: 20px;">
             <label>Archivo del Recibo (PDF o Imagen) *</label>
             <div class="upload-dropzone" id="dropzone">
-                <input type="file" name="archivo_recibo" id="archivo_recibo" accept=".pdf,.jpg,.jpeg,.png" required
-                    onchange="procesarRecibo(this)">
+                <input type="file" name="archivo_recibo" id="archivo_recibo" accept=".pdf,.jpg,.jpeg,.png"
+                    required onchange="procesarRecibo(this)">
                 <div class="upload-icon">📄</div>
                 <div class="upload-title">Haz clic o arrastra aquí el recibo de CFE</div>
                 <div class="upload-sub">Si es PDF, extraerá automáticamente el No. de Servicio</div>
@@ -45,6 +45,15 @@ if (!isset($conn)) {
         </div>
 
         <div class="form-grid">
+            <div class="form-group full-width">
+                <label for="tipo_demanda">Tipo de Demanda *</label>
+                <select name="tipo_demanda" id="tipo_demanda" class="form-control" required>
+                    <option value="">-- Seleccionar tipo de demanda --</option>
+                    <option value="Gran Demanda">Gran Demanda (Tarifa GDMTO/GDMTH)</option>
+                    <option value="Baja Demanda">Baja Demanda (Tarifa PDBT/01)</option>
+                </select>
+            </div>
+
             <div class="form-group">
                 <label>Nombre del Cliente *</label>
                 <input type="text" name="cliente" id="r_cliente" class="form-control"
@@ -68,9 +77,7 @@ if (!isset($conn)) {
         </div>
 
         <div style="margin-top: 24px; display: flex; justify-content: flex-end;">
-            <button type="submit" class="btn-primary-ems">
-                <span>⬆</span> Guardar Recibo en Sistema
-            </button>
+            <button type="submit" class="btn-primary-ems"> Guardar Recibo en Sistema </button>
         </div>
     </form>
 </div>
@@ -101,7 +108,6 @@ if (!isset($conn)) {
 
                     let servicioExtracted = "";
 
-                    // Buscar etiqueta explícita (NO. DE SERVICIO / RPU) con 12 dígitos
                     const regexServicio = /(?:NO\.?\s*DE\s*SERVICIO|SERVICIO|RPU)[:\s]*([0-9\s]{12,16})/i;
                     const matchServ = fullText.match(regexServicio);
                     if (matchServ) {
@@ -109,7 +115,6 @@ if (!isset($conn)) {
                         if (limpio.length === 12) servicioExtracted = limpio;
                     }
 
-                    // Respaldo: primer bloque de 12 dígitos seguidos
                     if (!servicioExtracted) {
                         const match12 = fullText.match(/\b(\d{12})\b/);
                         if (match12) servicioExtracted = match12[1];
@@ -124,7 +129,7 @@ if (!isset($conn)) {
                 loader.style.display = 'none';
             }
 
-            document.getElementById('r_cliente').focus();
+            document.getElementById('tipo_demanda').focus();
         } else {
             fileLabel.style.display = 'none';
             loader.style.display = 'none';

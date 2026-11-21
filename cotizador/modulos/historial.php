@@ -5,19 +5,81 @@ if (!isset($conn)) {
 }
 ?>
 
+<style>
+    .historial-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-bottom: 12px;
+    }
+
+    .filter-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .filter-pill {
+        background-color: #f3f4f6;
+        color: #4b5563;
+        border: 1px solid #e5e7eb;
+        padding: 7px 14px;
+        border-radius: 9999px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.2s;
+    }
+
+    .filter-pill:hover {
+        background-color: #e5e7eb;
+        color: #111827;
+    }
+
+    .filter-pill.active {
+        background-color: #111827;
+        color: #ffffff;
+        border-color: #111827;
+    }
+
+    .badge.gran-demanda {
+        background-color: #fffbeb;
+        color: #b45309;
+        border: 1px solid #fcd34d;
+    }
+
+    .badge.baja-demanda {
+        background-color: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+    }
+</style>
+
 <h1 class="section-heading">Historial de Documentos</h1>
 <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
+    <div class="historial-header">
         <h2 style="margin:0; font-size:18px; color: var(--text-main);">Documentos Guardados</h2>
+
+        <div class="filter-pills" id="historial-filters">
+            <button type="button" class="filter-pill active" onclick="filtrarHistorial('todos', this)">Todos</button>
+            <button type="button" class="filter-pill" onclick="filtrarHistorial('gran_demanda', this)">🏭 Gran Demanda</button>
+            <button type="button" class="filter-pill" onclick="filtrarHistorial('baja_demanda', this)">🏠 Baja Demanda</button>
+            <button type="button" class="filter-pill" onclick="filtrarHistorial('ems', this)">⚡ Cotización EMS</button>
+            <button type="button" class="filter-pill" onclick="filtrarHistorial('solar', this)">☀️ Cotización Solar</button>
+        </div>
     </div>
+
     <div class="table-container">
-        <table class="dash-table">
+        <table class="dash-table" id="tabla-historial">
             <thead>
                 <tr>
                     <th>Folio</th>
                     <th>Fecha</th>
                     <th>Cliente / Agente</th>
-                    <th>Tipo de Documento</th>
+                    <th>Clasificación / Tipo</th>
                     <th>Monto / Rango</th>
                     <th>Acciones</th>
                 </tr>
@@ -38,31 +100,32 @@ if (!isset($conn)) {
                         $c = floatval(preg_replace('/[^0-9.-]/', '', $r["cargo_cfe"]));
                         $ic = ($e + $c) * 0.16;
                         $docs[] = [
-                            'tipo' => 'ems',
-                            'id' => $r['id'],
-                            'f' => $r['folio'],
-                            'fecha' => $r['fecha'],
-                            'c' => $r['cliente'],
-                            'a' => $r['agente_nombre'],
-                            'm' => $r['total'],
-                            'p' => [
-                                'tipo' => 'ems',
-                                'id' => $r['id'],
-                                'folio' => $r['folio'],
-                                'cliente' => $r['cliente'],
+                            'tipo'      => 'ems',
+                            'categoria' => 'ems',
+                            'id'        => $r['id'],
+                            'f'         => $r['folio'],
+                            'fecha'     => $r['fecha'],
+                            'c'         => $r['cliente'],
+                            'a'         => $r['agente_nombre'],
+                            'm'         => $r['total'],
+                            'p'         => [
+                                'tipo'      => 'ems',
+                                'id'        => $r['id'],
+                                'folio'     => $r['folio'],
+                                'cliente'   => $r['cliente'],
                                 'direccion' => $r['direccion'],
-                                'servicio' => $r['servicio_cfe'],
-                                'energia' => $f_n($r['energia_cfe']),
-                                'cargo' => $f_n($r['cargo_cfe']),
-                                'iva_cfe' => number_format($ic, 2, '.', ','),
+                                'servicio'  => $r['servicio_cfe'],
+                                'energia'   => $f_n($r['energia_cfe']),
+                                'cargo'     => $f_n($r['cargo_cfe']),
+                                'iva_cfe'   => number_format($ic, 2, '.', ','),
                                 'total_cfe' => $f_n($r['total_cfe']),
-                                'subtotal' => $f_n($r['subtotal']),
-                                'iva' => $f_n($r['iva']),
-                                'total' => $f_n($r['total']),
-                                'anticipo' => $f_n($r['anticipo']),
-                                'restante' => $f_n($r['restante']),
-                                'agente' => $r['agente_nombre'],
-                                'telefono' => $r['agente_telefono']
+                                'subtotal'  => $f_n($r['subtotal']),
+                                'iva'       => $f_n($r['iva']),
+                                'total'     => $f_n($r['total']),
+                                'anticipo'  => $f_n($r['anticipo']),
+                                'restante'  => $f_n($r['restante']),
+                                'agente'    => $r['agente_nombre'],
+                                'telefono'  => $r['agente_telefono']
                             ]
                         ];
                     }
@@ -73,51 +136,63 @@ if (!isset($conn)) {
                 if ($rs && $rs->num_rows > 0) {
                     while ($r = $rs->fetch_assoc()) {
                         $docs[] = [
-                            'tipo' => 'solar',
-                            'id' => $r['id'],
-                            'f' => $r['folio'],
-                            'fecha' => $r['fecha'],
-                            'c' => $r['cliente'],
-                            'a' => $r['agente_nombre'],
-                            'm' => $r['inversion_rango'],
-                            'p' => [
-                                'tipo' => 'solar',
-                                'id' => $r['id'],
-                                'folio' => $r['folio'],
-                                'cliente' => $r['cliente'],
-                                'servicio' => $r['servicio_cfe'],
-                                'paneles' => $r['paneles'],
-                                'watts_panel' => $r['watts_panel'],
-                                'potencia_kw' => $r['potencia_kw'],
+                            'tipo'      => 'solar',
+                            'categoria' => 'solar',
+                            'id'        => $r['id'],
+                            'f'         => $r['folio'],
+                            'fecha'     => $r['fecha'],
+                            'c'         => $r['cliente'],
+                            'a'         => $r['agente_nombre'],
+                            'm'         => $r['inversion_rango'],
+                            'p'         => [
+                                'tipo'            => 'solar',
+                                'id'              => $r['id'],
+                                'folio'           => $r['folio'],
+                                'cliente'         => $r['cliente'],
+                                'servicio'        => $r['servicio_cfe'],
+                                'paneles'         => $r['paneles'],
+                                'watts_panel'     => $r['watts_panel'],
+                                'potencia_kw'     => $r['potencia_kw'],
                                 'inversion_rango' => $r['inversion_rango'],
-                                'agente' => $r['agente_nombre'],
-                                'telefono' => $r['agente_telefono']
+                                'agente'          => $r['agente_nombre'],
+                                'telefono'        => $r['agente_telefono']
                             ]
                         ];
                     }
                 }
 
-                // 3. Recibos CFE
+                // 3. Recibos CFE (Gran Demanda / Baja Demanda)
                 $rr = @$conn->query("SELECT * FROM recibos_cfe ORDER BY fecha DESC");
                 if ($rr && $rr->num_rows > 0) {
                     while ($r = $rr->fetch_assoc()) {
+                        $demanda = $r['tipo_demanda'] ?? '';
+                        $cat = 'recibo';
+                        if ($demanda === 'Gran Demanda') {
+                            $cat = 'gran_demanda';
+                        } elseif ($demanda === 'Baja Demanda') {
+                            $cat = 'baja_demanda';
+                        }
+
                         $docs[] = [
-                            'tipo' => 'recibo',
-                            'id' => $r['id'],
-                            'f' => $r['folio'],
-                            'fecha' => $r['fecha'],
-                            'c' => $r['cliente'],
-                            'a' => $r['agente_nombre'],
-                            'm' => '—',
-                            'p' => [
-                                'tipo' => 'recibo',
-                                'id' => $r['id'],
-                                'folio' => $r['folio'],
-                                'cliente' => $r['cliente'],
-                                'direccion' => $r['direccion'],
-                                'servicio' => $r['servicio_cfe'],
-                                'monto' => '—',
-                                'agente' => $r['agente_nombre'],
+                            'tipo'         => 'recibo',
+                            'categoria'    => $cat,
+                            'tipo_demanda' => $demanda,
+                            'id'           => $r['id'],
+                            'f'            => $r['folio'],
+                            'fecha'        => $r['fecha'],
+                            'c'            => $r['cliente'],
+                            'a'            => $r['agente_nombre'],
+                            'm'            => '—',
+                            'p'            => [
+                                'tipo'         => 'recibo',
+                                'id'           => $r['id'],
+                                'folio'        => $r['folio'],
+                                'cliente'      => $r['cliente'],
+                                'direccion'    => $r['direccion'],
+                                'servicio'     => $r['servicio_cfe'],
+                                'tipo_demanda' => $demanda,
+                                'monto'        => '—',
+                                'agente'       => $r['agente_nombre'],
                                 'archivo_ruta' => $r['archivo_ruta'],
                                 'archivo_tipo' => $r['archivo_tipo']
                             ]
@@ -135,7 +210,7 @@ if (!isset($conn)) {
                         $f_fmt = date("d/m/Y h:i A", strtotime($d["fecha"]));
                         $dp = htmlspecialchars(json_encode($d['p']), ENT_QUOTES, 'UTF-8');
 
-                        echo "<tr id='row-" . $d['tipo'] . "-" . $d['id'] . "'>";
+                        echo "<tr id='row-" . $d['tipo'] . "-" . $d['id'] . "' data-categoria='" . htmlspecialchars($d['categoria']) . "'>";
                         echo "<td><strong>" . htmlspecialchars($d["f"]) . "</strong></td>";
                         echo "<td style='color: var(--text-muted); font-size: 13px;'>" . $f_fmt . "</td>";
                         echo "<td>
@@ -152,7 +227,14 @@ if (!isset($conn)) {
                             echo "<td><strong class='row-total' style='color: #111827; font-size: 14px;'>" . htmlspecialchars($d["m"]) . "</strong></td>";
                             $del = "dashboard.php?seccion=historial&eliminar_solar=" . $d["id"];
                         } else {
-                            echo "<td><span class='badge recibo'>Recibo CFE</span></td>";
+                            $dem = $d['tipo_demanda'] ?? '';
+                            if ($dem === 'Gran Demanda') {
+                                echo "<td><span class='badge gran-demanda'>Recibo • Gran Demanda</span></td>";
+                            } elseif ($dem === 'Baja Demanda') {
+                                echo "<td><span class='badge baja-demanda'>Recibo • Baja Demanda</span></td>";
+                            } else {
+                                echo "<td><span class='badge recibo'>Recibo CFE</span></td>";
+                            }
                             echo "<td><strong style='color: var(--text-main); font-size: 14px;'>—</strong></td>";
                             $del = "dashboard.php?seccion=historial&eliminar_recibo=" . $d["id"];
                         }
@@ -166,10 +248,26 @@ if (!isset($conn)) {
                         echo "</tr>";
                     }
                 } else {
-                    echo "<tr><td colspan='6' style='text-align:center; padding:40px; color: var(--text-muted);'>No hay documentos registrados aún.</td></tr>";
+                    echo "<tr id='empty-row'><td colspan='6' style='text-align:center; padding:40px; color: var(--text-muted);'>No hay documentos registrados aún.</td></tr>";
                 }
                 ?>
             </tbody>
         </table>
     </div>
 </div>
+
+<script>
+    function filtrarHistorial(categoria, btnEl) {
+        document.querySelectorAll('#historial-filters .filter-pill').forEach(btn => btn.classList.remove('active'));
+        if (btnEl) btnEl.classList.add('active');
+
+        const filas = document.querySelectorAll('#tabla-historial tbody tr[data-categoria]');
+        filas.forEach(fila => {
+            if (categoria === 'todos' || fila.getAttribute('data-categoria') === categoria) {
+                fila.style.display = '';
+            } else {
+                fila.style.display = 'none';
+            }
+        });
+    }
+</script>

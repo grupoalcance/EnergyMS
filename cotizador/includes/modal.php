@@ -10,8 +10,7 @@
             <div class="modal-actions">
                 <button type="button" id="btn-modal-edit" class="btn-modal-edit" onclick="toggleEdicionModal()">✏️
                     Editar</button>
-                <a id="btn-modal-download" href="#" download class="btn-modal-edit" style="display:none;">⬇️
-                    Descargar</a>
+                <a id="btn-modal-download" href="#" download class="btn-modal-edit" style="display:none;">Descargar</a>
                 <button type="button" class="btn-modal-print" onclick="imprimirDesdeModal()">🖨️ Imprimir / PDF</button>
                 <button type="button" class="btn-modal-close" onclick="cerrarModal()" title="Cerrar">&times;</button>
             </div>
