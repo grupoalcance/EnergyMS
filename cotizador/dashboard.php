@@ -57,7 +57,7 @@ $seccion = (isset($_GET['seccion']) && in_array($_GET['seccion'], $secciones_per
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
     </script>
-    <link rel="stylesheet" href="assets/estilos.css">
+    <link rel="stylesheet" href="assets/estilos.css?v=2">
 </head>
 
 <body>
