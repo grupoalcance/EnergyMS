@@ -4,9 +4,12 @@ session_start();
 $usuario_correcto = "admin";
 $password_correcto = "Energy2026";
 
+// Si es servidor local de PHP (localhost:8000), conserva ".php"; en Hostinger usa URL limpia
+$ext = (php_sapi_name() === 'cli-server') ? '.php' : '';
+
 if (isset($_GET['logout'])) {
     session_destroy();
-    header("Location: panel");
+    header("Location: panel" . $ext);
     exit;
 }
 
@@ -17,7 +20,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if ($usuario_ingresado === $usuario_correcto && $password_ingresada === $password_correcto) {
         $_SESSION['logeado'] = true;
-        header("Location: dashboard");
+        header("Location: dashboard" . $ext);
         exit;
     } else {
         $error = "Usuario o contraseña incorrectos.";
@@ -25,7 +28,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 if (isset($_SESSION['logeado']) && $_SESSION['logeado'] === true) {
-    header("Location: dashboard");
+    header("Location: dashboard" . $ext);
     exit;
 }
 ?>

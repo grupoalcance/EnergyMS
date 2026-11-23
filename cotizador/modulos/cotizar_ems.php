@@ -61,7 +61,8 @@ if (!isset($conn)) {
                             <td class="label">Energía:</td>
                             <td class="value">
                                 <div class="money-cell"><span class="currency">$</span><input type="text"
-                                        id="input-energia" placeholder="0.00" /></div>
+                                        id="input-energia" placeholder="0.00"
+                                        title="Ingresa el monto de energía del recibo; se calculará automáticamente el 10%" /></div>
                             </td>
                         </tr>
                         <tr>
@@ -94,22 +95,22 @@ if (!isset($conn)) {
                         <tr>
                             <td class="label">Subtotal:</td>
                             <td class="value">
-                                <div class="money-cell finance-color"><span class="currency">$</span><input type="text"
-                                        id="input-subtotal" placeholder="0.00" /></div>
+                                <div class="money-cell finance-color"><span class="currency">$</span><input
+                                        type="text" id="input-subtotal" placeholder="0.00" /></div>
                             </td>
                         </tr>
                         <tr>
                             <td class="label">IVA:</td>
                             <td class="value">
-                                <div class="money-cell finance-color"><span class="currency">$</span><input type="text"
-                                        id="iva-display" placeholder="0.00" readonly /></div>
+                                <div class="money-cell finance-color"><span class="currency">$</span><input
+                                        type="text" id="iva-display" placeholder="0.00" readonly /></div>
                             </td>
                         </tr>
                         <tr>
                             <td class="label">Total:</td>
                             <td class="value">
-                                <div class="money-cell finance-color"><span class="currency">$</span><input type="text"
-                                        id="total-display" placeholder="0.00" readonly /></div>
+                                <div class="money-cell finance-color"><span class="currency">$</span><input
+                                        type="text" id="total-display" placeholder="0.00" readonly /></div>
                             </td>
                         </tr>
                     </table>
@@ -180,29 +181,56 @@ if (!isset($conn)) {
         dAnticipo = document.getElementById("anticipo-display"),
         dRestante = document.getElementById("restante-display");
 
-    document.getElementById("input-direccion").addEventListener("input", function (e) {
+    document.getElementById("input-direccion").addEventListener("input", function(e) {
         const td = document.getElementById("input-tabla-direccion");
         td.value = e.target.value;
         autoResizeEl(td);
     });
 
-    const numFmt = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    function cleanFmt(e) { e.target.value = e.target.value.replace(/[^0-9.-]+/g, ""); }
+    const numFmt = new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+
+    function cleanFmt(e) {
+        e.target.value = e.target.value.replace(/[^0-9.-]+/g, "");
+    }
+
     function appFmt(e) {
         let v = parseFloat(e.target.value.replace(/[^0-9.-]+/g, ""));
         e.target.value = !isNaN(v) ? numFmt.format(v) : "";
     }
 
-    [inEnergia, inCargo, inSubtotal].forEach(i => {
+    // Energía: convierte automáticamente al 10% al salir de la casilla
+    inEnergia.addEventListener("focus", cleanFmt);
+    inEnergia.addEventListener("blur", function(e) {
+        let v = parseFloat(e.target.value.replace(/[^0-9.-]+/g, ""));
+        if (!isNaN(v)) {
+            if (inEnergia.dataset.pendiente10 === "1") {
+                v = v * 0.10;
+                inEnergia.dataset.pendiente10 = "0";
+            }
+            e.target.value = numFmt.format(v);
+        } else {
+            e.target.value = "";
+            inEnergia.dataset.pendiente10 = "0";
+        }
+        calCfe();
+    });
+
+    [inCargo, inSubtotal].forEach(i => {
         i.addEventListener("focus", cleanFmt);
         i.addEventListener("blur", appFmt);
     });
 
     function calCfe() {
-        let e = parseFloat(inEnergia.value.replace(/[^0-9.-]+/g, "")) || 0,
-            c = parseFloat(inCargo.value.replace(/[^0-9.-]+/g, "")) || 0;
+        let rawE = parseFloat(inEnergia.value.replace(/[^0-9.-]+/g, "")) || 0;
+        let e = (inEnergia.dataset.pendiente10 === "1") ? (rawE * 0.10) : rawE;
+        let c = parseFloat(inCargo.value.replace(/[^0-9.-]+/g, "")) || 0;
+
         if (e > 0 || c > 0) {
-            let s = e + c, i = s * 0.16;
+            let s = e + c,
+                i = s * 0.16;
             document.getElementById("iva-cfe-display").value = numFmt.format(i);
             inTotalCfe.value = numFmt.format(s + i);
         } else {
@@ -210,13 +238,18 @@ if (!isset($conn)) {
             inTotalCfe.value = "";
         }
     }
-    inEnergia.addEventListener("input", calCfe);
+
+    inEnergia.addEventListener("input", function() {
+        inEnergia.dataset.pendiente10 = "1";
+        calCfe();
+    });
     inCargo.addEventListener("input", calCfe);
 
-    inSubtotal.addEventListener("input", function (e) {
+    inSubtotal.addEventListener("input", function(e) {
         let s = parseFloat(e.target.value.replace(/[^0-9.-]+/g, ""));
         if (isNaN(s)) s = 0;
-        let i = s * 0.16, t = s + i;
+        let i = s * 0.16,
+            t = s + i;
         dIva.value = numFmt.format(i);
         dTotal.value = numFmt.format(t);
         dAnticipo.innerText = numFmt.format(t * 0.6);
@@ -224,6 +257,13 @@ if (!isset($conn)) {
     });
 
     function getDatos() {
+        if (inEnergia.dataset.pendiente10 === "1") {
+            let v = parseFloat(inEnergia.value.replace(/[^0-9.-]+/g, ""));
+            inEnergia.value = !isNaN(v) ? numFmt.format(v * 0.10) : "";
+            inEnergia.dataset.pendiente10 = "0";
+            calCfe();
+        }
+
         const cv = v => v.trim() !== "" ? "$" + v.trim() : "";
         return {
             folio: document.getElementById("folio-number").innerText,
@@ -247,7 +287,9 @@ if (!isset($conn)) {
         try {
             await fetch("guardar.php", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json"
+                },
                 body: JSON.stringify(getDatos())
             });
         } catch (e) {
