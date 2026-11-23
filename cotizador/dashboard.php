@@ -57,7 +57,7 @@ $seccion = (isset($_GET['seccion']) && in_array($_GET['seccion'], $secciones_per
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
     </script>
-    <link rel="stylesheet" href="assets/estilos.css?v=2">
+    <link rel="stylesheet" href="assets/estilos.css?v=3">
 </head>
 
 <body>
@@ -69,7 +69,7 @@ $seccion = (isset($_GET['seccion']) && in_array($_GET['seccion'], $secciones_per
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <img src="../img/energyblack.jpeg" alt="EMS Logo">
-            <button type="button" class="sidebar-close-btn" onclick="cerrarMenuMovil()" aria-label="Cerrar menú">&times;</button>
+            <button type="button" class="sidebar-close-btn" style="display:none;" onclick="cerrarMenuMovil()" aria-label="Cerrar menú">&times;</button>
         </div>
         <ul class="nav-menu">
             <li class="nav-item">
@@ -106,7 +106,7 @@ $seccion = (isset($_GET['seccion']) && in_array($_GET['seccion'], $secciones_per
     <!-- CONTENIDO PRINCIPAL -->
     <main class="main-content">
         <!-- BARRA SUPERIOR SOLO VISIBLE EN CELULAR / TABLET -->
-        <header class="mobile-header">
+        <header class="mobile-header" style="display:none;">
             <button type="button" class="mobile-menu-btn" onclick="abrirMenuMovil()" aria-label="Abrir menú">☰</button>
             <img src="../img/energyblack.jpeg" alt="EMS Logo" class="mobile-header-logo">
             <div class="mobile-header-spacer"></div>

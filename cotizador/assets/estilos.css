@@ -1135,7 +1135,7 @@ table.products td textarea {
     }
 
     .sidebar-close-btn {
-        display: block;
+        display: block !important;
         position: absolute;
         right: 14px;
         top: 50%;
@@ -1151,7 +1151,7 @@ table.products td textarea {
 
     /* Barra superior móvil */
     .mobile-header {
-        display: flex;
+        display: flex !important;
         align-items: center;
         justify-content: space-between;
         background-color: #ffffff;
