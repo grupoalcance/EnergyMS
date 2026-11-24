@@ -3,11 +3,239 @@ if (!isset($conn)) {
     header("Location: ../dashboard.php?seccion=cotizar_ems");
     exit;
 }
+
+// Obtener recibos CFE recientes para autocompletado
+$recibos_lista = [];
+$res_rec_opt = @$conn->query("SELECT id, folio, cliente, direccion, servicio_cfe, tipo_demanda, agente_nombre FROM recibos_cfe ORDER BY fecha DESC LIMIT 40");
+if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
+    while ($ro = $res_rec_opt->fetch_assoc()) {
+        $recibos_lista[] = $ro;
+    }
+}
 ?>
 
-<button class="print-btn-float" onclick="guardarEImprimir()">🖨️ Imprimir / Guardar PDF</button>
+<style>
+    .fab-box {
+        background-color: #f8fafc;
+        border: 1.5px solid #111827;
+        border-radius: 8px;
+        width: 82%;
+        margin-bottom: 24px;
+        overflow: hidden;
+    }
+
+    .fab-header {
+        background-color: #111827;
+        color: #ffffff;
+        padding: 8px 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 2px solid var(--brand-green);
+    }
+
+    .fab-title {
+        font-size: 12.5px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--brand-green);
+    }
+
+    .fab-demanda-select {
+        background-color: #1f2937;
+        color: #ffffff;
+        border: 1px solid #374151;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        font-family: inherit;
+        outline: none;
+        cursor: pointer;
+    }
+
+    .fab-body {
+        padding: 12px 18px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        align-items: center;
+    }
+
+    .fab-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .fab-field label {
+        font-size: 11.5px;
+        font-weight: 700;
+        color: #4b5563;
+        text-transform: uppercase;
+    }
+
+    .fab-input-wrap {
+        display: flex;
+        align-items: center;
+        border-bottom: 1.5px solid #cbd5e1;
+        padding-bottom: 3px;
+        gap: 6px;
+    }
+
+    .fab-input-wrap input {
+        width: 100%;
+        border: none;
+        outline: none;
+        background: transparent;
+        font-size: 15px;
+        font-weight: 800;
+        color: #111827;
+    }
+
+    .fab-result-box {
+        background-color: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 6px;
+        padding: 8px 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .fab-result-label {
+        font-size: 12px;
+        font-weight: 800;
+        color: #166534;
+        text-transform: uppercase;
+    }
+
+    .fab-result-val {
+        font-size: 16px;
+        font-weight: 800;
+        color: #111827;
+    }
+
+    .print-actions-float {
+        position: fixed;
+        bottom: 26px;
+        right: 26px;
+        display: flex;
+        gap: 10px;
+        z-index: 100;
+    }
+
+    .print-actions-float button {
+        border: none;
+        padding: 13px 20px;
+        border-radius: 50px;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.25);
+        transition: transform 0.2s;
+        font-family: inherit;
+    }
+
+    .print-actions-float button:hover {
+        transform: scale(1.03);
+    }
+
+    .btn-print-cliente {
+        background-color: #1a202c;
+        color: #ffffff;
+    }
+
+    .btn-print-interno {
+        background-color: var(--brand-green);
+        color: #000000;
+    }
+
+    @media (max-width: 820px) {
+        .fab-box {
+            width: 100%;
+        }
+
+        .fab-body {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .print-actions-float {
+            bottom: 12px;
+            left: 16px;
+            right: 16px;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .print-actions-float button {
+            width: 100%;
+            border-radius: 10px;
+            padding: 12px 16px;
+        }
+    }
+
+    @media print {
+        .print-actions-float {
+            display: none !important;
+        }
+
+        body.print-sin-fab .fab-box {
+            display: none !important;
+        }
+
+        .fab-box {
+            width: 82% !important;
+            margin-bottom: 14px !important;
+        }
+
+        .fab-demanda-select {
+            border: none !important;
+            background: transparent !important;
+            appearance: none;
+            -webkit-appearance: none;
+            padding: 0 !important;
+        }
+
+        .payment-conditions {
+            margin-bottom: 14px !important;
+        }
+
+        .agent-bottom-info {
+            margin-top: 14px !important;
+        }
+    }
+</style>
+
+<div class="print-actions-float">
+    <button type="button" class="btn-print-cliente" onclick="guardarEImprimir(false)">🖨️ Imprimir (Cliente)</button>
+    <button type="button" class="btn-print-interno" onclick="guardarEImprimir(true)">🛠️ Imprimir (Con Costo Fab.)</button>
+</div>
 
 <div class="page-container">
+    <?php if (count($recibos_lista) > 0): ?>
+        <div class="quick-fill-bar">
+            <label>📄 Cargar datos desde Recibo:</label>
+            <select onchange="cargarDesdeReciboEMS(this)">
+                <option value="">-- Seleccionar recibo guardado (opcional) --</option>
+                <?php foreach ($recibos_lista as $rec): ?>
+                    <option value="<?php echo htmlspecialchars(json_encode([
+                                        'cliente'      => $rec['cliente'],
+                                        'direccion'    => $rec['direccion'],
+                                        'servicio'     => $rec['servicio_cfe'],
+                                        'tipo_demanda' => $rec['tipo_demanda'],
+                                        'agente'       => $rec['agente_nombre']
+                                    ]), ENT_QUOTES, 'UTF-8'); ?>">
+                        <?php echo htmlspecialchars($rec['folio'] . ' - ' . $rec['cliente'] . ($rec['tipo_demanda'] ? ' [' . $rec['tipo_demanda'] . ']' : '')); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+    <?php endif; ?>
+
     <div class="page">
         <header>
             <div class="logo-container"><img src="../img/energy.png" alt="EMS" class="logo-ems-doc" /></div>
@@ -130,6 +358,30 @@ if (!isset($conn)) {
                     </div>
                 </div>
 
+                <!-- COSTO DE FABRICACIÓN -->
+                <div class="fab-box">
+                    <div class="fab-header">
+                        <span class="fab-title">🛠️ Costo de Fabricación</span>
+                        <select id="input-tipo-demanda" class="fab-demanda-select" onchange="actualizarEtiquetaFabricacion()">
+                            <option value="Gran Demanda">🏭 Gran Demanda</option>
+                            <option value="Baja Demanda">🏠 Baja Demanda</option>
+                        </select>
+                    </div>
+                    <div class="fab-body">
+                        <div class="fab-field">
+                            <label id="label-dato-fab">Demanda contratada (kW):</label>
+                            <div class="fab-input-wrap">
+                                <input type="number" id="input-dato-fab" placeholder="0" step="any" min="0"
+                                    oninput="calcularCostoFabricacion()" />
+                            </div>
+                        </div>
+                        <div class="fab-result-box">
+                            <span class="fab-result-label">Costo Total:</span>
+                            <span class="fab-result-val" id="costo-fab-display">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="agent-bottom-info">
                     <div class="agent-field">
                         <input type="text" id="input-agente-nombre" placeholder="Nombre completo" />
@@ -156,6 +408,8 @@ if (!isset($conn)) {
 </div>
 
 <script>
+    let cotizacionGuardadaId = null;
+
     function autoResizeEl(el) {
         el.style.height = 'auto';
         el.style.height = el.scrollHeight + 'px';
@@ -199,6 +453,52 @@ if (!isset($conn)) {
     function appFmt(e) {
         let v = parseFloat(e.target.value.replace(/[^0-9.-]+/g, ""));
         e.target.value = !isNaN(v) ? numFmt.format(v) : "";
+    }
+
+    function cargarDesdeReciboEMS(selectEl) {
+        if (!selectEl.value) return;
+        const data = JSON.parse(selectEl.value);
+        const cEl = document.getElementById("input-cliente");
+        const dEl = document.getElementById("input-direccion");
+        const tdEl = document.getElementById("input-tabla-direccion");
+        const sEl = document.getElementById("input-servicio");
+        const aEl = document.getElementById("input-agente-nombre");
+        const demEl = document.getElementById("input-tipo-demanda");
+
+        cEl.value = data.cliente || "";
+        dEl.value = data.direccion || "";
+        tdEl.value = data.direccion || "";
+        sEl.value = data.servicio || "";
+        if (aEl && data.agente) aEl.value = data.agente;
+
+        if (demEl && (data.tipo_demanda === "Gran Demanda" || data.tipo_demanda === "Baja Demanda")) {
+            demEl.value = data.tipo_demanda;
+            actualizarEtiquetaFabricacion();
+        }
+
+        [cEl, dEl, tdEl, sEl].forEach(autoResizeEl);
+    }
+
+    function actualizarEtiquetaFabricacion() {
+        const tipo = document.getElementById("input-tipo-demanda").value;
+        const lbl = document.getElementById("label-dato-fab");
+        lbl.innerText = (tipo === "Baja Demanda") ? "Lectura total:" : "Demanda contratada (kW):";
+        calcularCostoFabricacion();
+    }
+
+    function calcularCostoFabricacion() {
+        const tipo = document.getElementById("input-tipo-demanda").value;
+        const val = parseFloat(document.getElementById("input-dato-fab").value) || 0;
+        let costo = 0;
+
+        if (val > 0) {
+            if (tipo === "Baja Demanda") {
+                costo = (val / 60) * 1.5 * 1000;
+            } else {
+                costo = val * 1.5 * 1000;
+            }
+        }
+        document.getElementById("costo-fab-display").innerText = "$" + numFmt.format(costo);
     }
 
     // Energía: convierte automáticamente al 10% al salir de la casilla
@@ -266,10 +566,12 @@ if (!isset($conn)) {
 
         const cv = v => v.trim() !== "" ? "$" + v.trim() : "";
         return {
+            id: cotizacionGuardadaId,
             folio: document.getElementById("folio-number").innerText,
             cliente: document.getElementById("input-cliente").value,
             direccion: document.getElementById("input-direccion").value,
             servicio: document.getElementById("input-servicio").value,
+            tipo_demanda: document.getElementById("input-tipo-demanda").value,
             energia: cv(inEnergia.value),
             cargo: cv(inCargo.value),
             total_cfe: cv(inTotalCfe.value),
@@ -278,23 +580,47 @@ if (!isset($conn)) {
             total: cv(dTotal.value),
             anticipo: cv(dAnticipo.innerText),
             restante: cv(dRestante.innerText),
+            dato_fabricacion: document.getElementById("input-dato-fab").value.trim(),
+            costo_fabricacion: document.getElementById("costo-fab-display").innerText,
             agente_nombre: document.getElementById("input-agente-nombre").value,
             agente_telefono: document.getElementById("input-agente-telefono").value
         };
     }
 
-    async function guardarEImprimir() {
+    async function guardarEImprimir(incluirFabricacion) {
+        const cliente = document.getElementById("input-cliente").value.trim();
+        if (!cliente) {
+            alert("Por favor ingresa el Nombre del cliente antes de guardar.");
+            document.getElementById("input-cliente").focus();
+            return;
+        }
+
         try {
-            await fetch("guardar.php", {
+            const res = await fetch("guardar.php", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify(getDatos())
             });
+            const data = await res.json();
+            if (data.status === "success" && data.id) {
+                cotizacionGuardadaId = data.id;
+            }
         } catch (e) {
             console.error("Error al guardar cotización EMS:", e);
         }
+
+        if (incluirFabricacion) {
+            document.body.classList.remove("print-sin-fab");
+        } else {
+            document.body.classList.add("print-sin-fab");
+        }
+
         window.print();
+
+        setTimeout(() => {
+            document.body.classList.remove("print-sin-fab");
+        }, 500);
     }
 </script>
