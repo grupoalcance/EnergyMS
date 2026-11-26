@@ -4,12 +4,47 @@ if (!isset($conn)) {
     exit;
 }
 
-// Obtener recibos CFE recientes para autocompletado
-$recibos_lista = [];
-$res_rec_opt = @$conn->query("SELECT id, folio, cliente, direccion, servicio_cfe, tipo_demanda, agente_nombre FROM recibos_cfe ORDER BY fecha DESC LIMIT 40");
+// Detectar clientes con solar listo y clientes que ya tienen EMS
+$con_solar = [];
+$rs_s = @$conn->query("SELECT servicio_cfe, cliente FROM cotizaciones_solares");
+if ($rs_s && $rs_s->num_rows > 0) {
+    while ($r = $rs_s->fetch_assoc()) {
+        $srv = preg_replace('/[^0-9]/', '', (string)$r['servicio_cfe']);
+        if (strlen($srv) >= 6) $con_solar['srv_' . $srv] = true;
+        $cli = strtolower(trim(preg_replace('/\s+/', ' ', (string)$r['cliente'])));
+        if ($cli !== '') $con_solar['cli_' . md5($cli)] = true;
+    }
+}
+
+$con_ems = [];
+$re_e = @$conn->query("SELECT servicio_cfe, cliente FROM cotizaciones");
+if ($re_e && $re_e->num_rows > 0) {
+    while ($r = $re_e->fetch_assoc()) {
+        $srv = preg_replace('/[^0-9]/', '', (string)$r['servicio_cfe']);
+        if (strlen($srv) >= 6) $con_ems['srv_' . $srv] = true;
+        $cli = strtolower(trim(preg_replace('/\s+/', ' ', (string)$r['cliente'])));
+        if ($cli !== '') $con_ems['cli_' . md5($cli)] = true;
+    }
+}
+
+$recibos_listos_ems = [];
+$recibos_otros = [];
+$res_rec_opt = @$conn->query("SELECT * FROM recibos_cfe ORDER BY fecha DESC LIMIT 40");
 if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
     while ($ro = $res_rec_opt->fetch_assoc()) {
-        $recibos_lista[] = $ro;
+        $srv = preg_replace('/[^0-9]/', '', (string)$ro['servicio_cfe']);
+        $cli = strtolower(trim(preg_replace('/\s+/', ' ', (string)$ro['cliente'])));
+        $k_srv = strlen($srv) >= 6 ? 'srv_' . $srv : '';
+        $k_cli = $cli !== '' ? 'cli_' . md5($cli) : '';
+
+        $tiene_solar = ($k_srv && isset($con_solar[$k_srv])) || ($k_cli && isset($con_solar[$k_cli]));
+        $tiene_ems   = ($k_srv && isset($con_ems[$k_srv]))   || ($k_cli && isset($con_ems[$k_cli]));
+
+        if ($tiene_solar && !$tiene_ems) {
+            $recibos_listos_ems[] = $ro;
+        } else {
+            $recibos_otros[] = $ro;
+        }
     }
 }
 ?>
@@ -153,6 +188,34 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
         color: #000000;
     }
 
+    .btn-ver-recibo-inline {
+        background-color: #1d4ed8;
+        color: #ffffff;
+        border: none;
+        padding: 8px 14px;
+        border-radius: 7px;
+        font-size: 12.5px;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+        white-space: nowrap;
+        display: none;
+    }
+
+    .btn-ver-recibo-inline:hover {
+        background-color: #1e40af;
+    }
+
+    .badge-listo-ems {
+        background: #dbeafe;
+        color: #1e40af;
+        border: 1px solid #93c5fd;
+        padding: 3px 9px;
+        border-radius: 999px;
+        font-size: 11.5px;
+        font-weight: 800;
+    }
+
     @media (max-width: 820px) {
         .fab-box {
             width: 100%;
@@ -216,23 +279,60 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
 </div>
 
 <div class="page-container">
-    <?php if (count($recibos_lista) > 0): ?>
+    <?php if (count($recibos_listos_ems) > 0 || count($recibos_otros) > 0): ?>
         <div class="quick-fill-bar">
-            <label>📄 Cargar datos desde Recibo:</label>
+            <label>
+                📄 Cargar cliente desde Recibo:
+                <?php if (count($recibos_listos_ems) > 0): ?>
+                    <span class="badge-listo-ems">⚡ <?php echo count($recibos_listos_ems); ?> listo(s) tras Solar</span>
+                <?php endif; ?>
+            </label>
             <select onchange="cargarDesdeReciboEMS(this)">
-                <option value="">-- Seleccionar recibo guardado (opcional) --</option>
-                <?php foreach ($recibos_lista as $rec): ?>
-                    <option value="<?php echo htmlspecialchars(json_encode([
-                                        'cliente'      => $rec['cliente'],
-                                        'direccion'    => $rec['direccion'],
-                                        'servicio'     => $rec['servicio_cfe'],
-                                        'tipo_demanda' => $rec['tipo_demanda'],
-                                        'agente'       => $rec['agente_nombre']
-                                    ]), ENT_QUOTES, 'UTF-8'); ?>">
-                        <?php echo htmlspecialchars($rec['folio'] . ' - ' . $rec['cliente'] . ($rec['tipo_demanda'] ? ' [' . $rec['tipo_demanda'] . ']' : '')); ?>
-                    </option>
-                <?php endforeach; ?>
+                <option value="">-- Seleccionar recibo guardado --</option>
+                <?php if (count($recibos_listos_ems) > 0): ?>
+                    <optgroup label="⚡ LISTOS PARA COTIZAR EMS (Solar ya listo)">
+                        <?php foreach ($recibos_listos_ems as $rec): ?>
+                            <option value="<?php echo htmlspecialchars(json_encode([
+                                                'tipo'         => 'recibo',
+                                                'id'           => $rec['id'],
+                                                'folio'        => $rec['folio'],
+                                                'cliente'      => $rec['cliente'],
+                                                'direccion'    => $rec['direccion'],
+                                                'servicio'     => $rec['servicio_cfe'],
+                                                'tipo_demanda' => $rec['tipo_demanda'],
+                                                'agente'       => $rec['agente_nombre'],
+                                                'archivo_ruta' => $rec['archivo_ruta'],
+                                                'archivo_tipo' => $rec['archivo_tipo']
+                                            ]), ENT_QUOTES, 'UTF-8'); ?>">
+                                ⚡ <?php echo htmlspecialchars($rec['folio'] . ' - ' . $rec['cliente'] . ($rec['tipo_demanda'] ? ' [' . $rec['tipo_demanda'] . ']' : '')); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </optgroup>
+                <?php endif; ?>
+                <?php if (count($recibos_otros) > 0): ?>
+                    <optgroup label="OTROS RECIBOS GUARDADOS">
+                        <?php foreach ($recibos_otros as $rec): ?>
+                            <option value="<?php echo htmlspecialchars(json_encode([
+                                                'tipo'         => 'recibo',
+                                                'id'           => $rec['id'],
+                                                'folio'        => $rec['folio'],
+                                                'cliente'      => $rec['cliente'],
+                                                'direccion'    => $rec['direccion'],
+                                                'servicio'     => $rec['servicio_cfe'],
+                                                'tipo_demanda' => $rec['tipo_demanda'],
+                                                'agente'       => $rec['agente_nombre'],
+                                                'archivo_ruta' => $rec['archivo_ruta'],
+                                                'archivo_tipo' => $rec['archivo_tipo']
+                                            ]), ENT_QUOTES, 'UTF-8'); ?>">
+                                <?php echo htmlspecialchars($rec['folio'] . ' - ' . $rec['cliente'] . ($rec['tipo_demanda'] ? ' [' . $rec['tipo_demanda'] . ']' : '')); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </optgroup>
+                <?php endif; ?>
             </select>
+            <button type="button" id="btn-ver-recibo-ems" class="btn-ver-recibo-inline" onclick="abrirModal(this)">
+                📄 Ver Recibo CFE
+            </button>
         </div>
     <?php endif; ?>
 
@@ -456,7 +556,11 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
     }
 
     function cargarDesdeReciboEMS(selectEl) {
-        if (!selectEl.value) return;
+        const btnRec = document.getElementById("btn-ver-recibo-ems");
+        if (!selectEl.value) {
+            if (btnRec) btnRec.style.display = "none";
+            return;
+        }
         const data = JSON.parse(selectEl.value);
         const cEl = document.getElementById("input-cliente");
         const dEl = document.getElementById("input-direccion");
@@ -474,6 +578,11 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
         if (demEl && (data.tipo_demanda === "Gran Demanda" || data.tipo_demanda === "Baja Demanda")) {
             demEl.value = data.tipo_demanda;
             actualizarEtiquetaFabricacion();
+        }
+
+        if (btnRec && data.archivo_ruta) {
+            btnRec.setAttribute("data-doc", selectEl.value);
+            btnRec.style.display = "inline-block";
         }
 
         [cEl, dEl, tdEl, sEl].forEach(autoResizeEl);
@@ -588,7 +697,7 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
     }
 
     async function guardarEImprimir(incluirFabricacion) {
-        const cliente = document.getElementById("input-cliente").value.trim();
+        const cliente = document.getElementById("input-cliente").value.replace(/\s+/g, " ").trim();
         if (!cliente) {
             alert("Por favor ingresa el Nombre del cliente antes de guardar.");
             document.getElementById("input-cliente").focus();
@@ -617,9 +726,14 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
             document.body.classList.add("print-sin-fab");
         }
 
+        const tituloOriginal = document.title;
+        const folioTxt = document.getElementById("folio-number").innerText.trim();
+        document.title = `Cotizacion ${folioTxt} ${cliente}`.trim();
+
         window.print();
 
         setTimeout(() => {
+            document.title = tituloOriginal;
             document.body.classList.remove("print-sin-fab");
         }, 500);
     }

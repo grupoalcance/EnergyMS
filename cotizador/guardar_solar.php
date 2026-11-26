@@ -8,6 +8,7 @@ if (!isset($_SESSION['logeado']) || $_SESSION['logeado'] !== true) {
 }
 
 include 'conexion.php';
+include 'includes/flujo_helper.php';
 
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input) {
@@ -31,6 +32,7 @@ if ($id > 0) {
     $stmt->bind_param("ssiisssssi", $cliente, $servicio_cfe, $paneles, $watts_panel, $potencia_kw, $metros_cuadrados, $inversion_rango, $agente_nombre, $agente_telefono, $id);
 
     if ($stmt->execute()) {
+        avanzarEstatusExpediente($conn, $cliente, $servicio_cfe, 'Pendiente EMS');
         echo json_encode(['status' => 'success', 'id' => $id]);
     } else {
         echo json_encode(['status' => 'error', 'message' => $conn->error]);
@@ -47,6 +49,9 @@ if ($stmt->execute()) {
     $numero_folio = 99 + $nuevo_id;
     $folio_final = 'PS-' . str_pad($numero_folio, 4, '0', STR_PAD_LEFT);
     $conn->query("UPDATE cotizaciones_solares SET folio = '$folio_final' WHERE id = $nuevo_id");
+
+    // Pasar expediente automáticamente a Pendiente EMS para Administración
+    avanzarEstatusExpediente($conn, $cliente, $servicio_cfe, 'Pendiente EMS');
 
     echo json_encode(['status' => 'success', 'id' => $nuevo_id, 'folio' => $folio_final]);
 } else {

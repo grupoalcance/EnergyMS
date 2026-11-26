@@ -1,16 +1,18 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 include 'conexion.php';
+include 'includes/flujo_helper.php';
 
-// Recibir los datos enviados desde el HTML en formato JSON
 $data = json_decode(file_get_contents("php://input"), true);
 
 if ($data) {
     $id                = isset($data['id']) ? intval($data['id']) : null;
     $folio             = $conn->real_escape_string($data['folio'] ?? '');
-    $cliente           = $conn->real_escape_string($data['cliente'] ?? '');
+    $cliente_raw       = trim($data['cliente'] ?? '');
+    $servicio_raw      = trim($data['servicio'] ?? '');
+    $cliente           = $conn->real_escape_string($cliente_raw);
     $direccion         = $conn->real_escape_string($data['direccion'] ?? '');
-    $servicio          = $conn->real_escape_string($data['servicio'] ?? '');
+    $servicio          = $conn->real_escape_string($servicio_raw);
     $tipo_demanda      = $conn->real_escape_string($data['tipo_demanda'] ?? '');
     $energia           = $conn->real_escape_string($data['energia'] ?? '');
     $cargo             = $conn->real_escape_string($data['cargo'] ?? '');
@@ -53,6 +55,10 @@ if ($data) {
 
     if ($conn->query($sql) === TRUE) {
         $saved_id = $id ? $id : $conn->insert_id;
+
+        // Pasar expediente automáticamente a Cotización Completa
+        avanzarEstatusExpediente($conn, $cliente_raw, $servicio_raw, 'Cotización Completa');
+
         echo json_encode(["status" => "success", "id" => $saved_id, "message" => "Guardado correctamente"]);
     } else {
         echo json_encode(["status" => "error", "message" => "Error de BD: " . $conn->error]);

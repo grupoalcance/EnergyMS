@@ -15,12 +15,34 @@ if ($res_sol_folio && $row_sf = $res_sol_folio->fetch_assoc()) {
 }
 $folio_solar_inicial = 'PS-' . str_pad($next_sol_num, 4, '0', STR_PAD_LEFT);
 
-// Obtener recibos CFE recientes para autocompletado opcional
-$recibos_lista = [];
-$res_rec_opt = @$conn->query("SELECT id, folio, cliente, servicio_cfe FROM recibos_cfe ORDER BY fecha DESC LIMIT 30");
+// Obtener servicios que ya tienen cotización solar
+$servicios_con_solar = [];
+$rs_exist = @$conn->query("SELECT servicio_cfe, cliente FROM cotizaciones_solares");
+if ($rs_exist && $rs_exist->num_rows > 0) {
+    while ($se = $rs_exist->fetch_assoc()) {
+        $srv = preg_replace('/[^0-9]/', '', (string)$se['servicio_cfe']);
+        if (strlen($srv) >= 6) $servicios_con_solar['srv_' . $srv] = true;
+        $cli = strtolower(trim(preg_replace('/\s+/', ' ', (string)$se['cliente'])));
+        if ($cli !== '') $servicios_con_solar['cli_' . md5($cli)] = true;
+    }
+}
+
+// Obtener recibos CFE recientes y priorizar los pendientes de cotización solar
+$recibos_pendientes = [];
+$recibos_otros = [];
+$res_rec_opt = @$conn->query("SELECT * FROM recibos_cfe ORDER BY fecha DESC LIMIT 40");
 if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
     while ($ro = $res_rec_opt->fetch_assoc()) {
-        $recibos_lista[] = $ro;
+        $srv = preg_replace('/[^0-9]/', '', (string)$ro['servicio_cfe']);
+        $cli = strtolower(trim(preg_replace('/\s+/', ' ', (string)$ro['cliente'])));
+        $ya_tiene = (strlen($srv) >= 6 && isset($servicios_con_solar['srv_' . $srv]))
+            || ($cli !== '' && isset($servicios_con_solar['cli_' . md5($cli)]));
+
+        if ($ya_tiene) {
+            $recibos_otros[] = $ro;
+        } else {
+            $recibos_pendientes[] = $ro;
+        }
     }
 }
 ?>
@@ -43,24 +65,6 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
         align-items: center;
         gap: 12px;
         border-bottom: 3px solid var(--brand-green);
-    }
-
-    .solar-banner-left {
-        font-size: 14px;
-        font-weight: 800;
-        color: var(--brand-green);
-        letter-spacing: 0.6px;
-        text-transform: uppercase;
-        white-space: nowrap;
-    }
-
-    .solar-banner-right {
-        font-size: 14px;
-        font-weight: 700;
-        color: #f3f4f6;
-        text-transform: uppercase;
-        text-align: right;
-        word-break: break-word;
     }
 
     table.solar-spec-table {
@@ -138,23 +142,35 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
         color: #111827;
     }
 
+    .btn-ver-recibo-inline {
+        background-color: #1d4ed8;
+        color: #ffffff;
+        border: none;
+        padding: 8px 14px;
+        border-radius: 7px;
+        font-size: 12.5px;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+        white-space: nowrap;
+        display: none;
+    }
+
+    .btn-ver-recibo-inline:hover {
+        background-color: #1e40af;
+    }
+
+    .badge-pendiente-count {
+        background: #fef3c7;
+        color: #b45309;
+        border: 1px solid #fcd34d;
+        padding: 3px 9px;
+        border-radius: 999px;
+        font-size: 11.5px;
+        font-weight: 800;
+    }
+
     @media (max-width: 820px) {
-        .solar-banner-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 4px;
-            padding: 12px 14px;
-        }
-
-        .solar-banner-left {
-            font-size: 13px;
-        }
-
-        .solar-banner-right {
-            text-align: left;
-            font-size: 13px;
-        }
-
         table.solar-spec-table td {
             padding: 12px 12px;
             font-size: 14px;
@@ -165,52 +181,9 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
             font-size: 15px;
         }
 
-        .solar-m2-unit {
-            font-size: 13px;
-        }
-
         .solar-watts-inline {
             width: 44px;
             font-size: 14px;
-        }
-    }
-
-    @media (max-width: 480px) {
-        table.solar-spec-table td.solar-label {
-            width: 55%;
-            font-size: 13px;
-            padding: 10px 8px;
-        }
-
-        table.solar-spec-table td.solar-val {
-            width: 45%;
-            padding: 8px 6px;
-        }
-
-        .solar-input-m2 {
-            width: 48px !important;
-            font-size: 14px;
-        }
-    }
-
-    @media print {
-        .solar-box-wrapper {
-            margin: 14px 0 20px 0 !important;
-            border-radius: 6px !important;
-        }
-
-        .solar-banner-header {
-            flex-direction: row !important;
-            padding: 12px 18px !important;
-        }
-
-        .solar-banner-right {
-            text-align: right !important;
-        }
-
-        table.solar-spec-table td {
-            padding: 14px 18px !important;
-            font-size: 15px !important;
         }
     }
 </style>
@@ -218,20 +191,54 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
 <button class="print-btn-float" onclick="guardarSolarEImprimir()">🖨️ Imprimir / Guardar PDF</button>
 
 <div class="page-container">
-    <?php if (count($recibos_lista) > 0): ?>
+    <?php if (count($recibos_pendientes) > 0 || count($recibos_otros) > 0): ?>
         <div class="quick-fill-bar">
-            <label>📄 Cargar datos desde Recibo:</label>
+            <label>
+                📄 Cargar Recibo CFE:
+                <?php if (count($recibos_pendientes) > 0): ?>
+                    <span class="badge-pendiente-count">⏳ <?php echo count($recibos_pendientes); ?> pendiente(s)</span>
+                <?php endif; ?>
+            </label>
             <select onchange="cargarDesdeReciboSolar(this)">
-                <option value="">-- Seleccionar recibo guardado (opcional) --</option>
-                <?php foreach ($recibos_lista as $rec): ?>
-                    <option value="<?php echo htmlspecialchars(json_encode([
-                                        'cliente' => $rec['cliente'],
-                                        'servicio' => $rec['servicio_cfe']
-                                    ]), ENT_QUOTES, 'UTF-8'); ?>">
-                        <?php echo htmlspecialchars($rec['folio'] . ' - ' . $rec['cliente'] . ($rec['servicio_cfe'] ? ' (' . $rec['servicio_cfe'] . ')' : '')); ?>
-                    </option>
-                <?php endforeach; ?>
+                <option value="">-- Seleccionar recibo guardado --</option>
+                <?php if (count($recibos_pendientes) > 0): ?>
+                    <optgroup label="⏳ PENDIENTES DE COTIZAR PANELES">
+                        <?php foreach ($recibos_pendientes as $rec): ?>
+                            <option value="<?php echo htmlspecialchars(json_encode([
+                                                'tipo'         => 'recibo',
+                                                'id'           => $rec['id'],
+                                                'folio'        => $rec['folio'],
+                                                'cliente'      => $rec['cliente'],
+                                                'servicio'     => $rec['servicio_cfe'],
+                                                'archivo_ruta' => $rec['archivo_ruta'],
+                                                'archivo_tipo' => $rec['archivo_tipo']
+                                            ]), ENT_QUOTES, 'UTF-8'); ?>">
+                                ⏳ <?php echo htmlspecialchars($rec['folio'] . ' - ' . $rec['cliente'] . ($rec['servicio_cfe'] ? ' (' . $rec['servicio_cfe'] . ')' : '')); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </optgroup>
+                <?php endif; ?>
+                <?php if (count($recibos_otros) > 0): ?>
+                    <optgroup label="✓ YA COTIZADOS ANTERIORMENTE">
+                        <?php foreach ($recibos_otros as $rec): ?>
+                            <option value="<?php echo htmlspecialchars(json_encode([
+                                                'tipo'         => 'recibo',
+                                                'id'           => $rec['id'],
+                                                'folio'        => $rec['folio'],
+                                                'cliente'      => $rec['cliente'],
+                                                'servicio'     => $rec['servicio_cfe'],
+                                                'archivo_ruta' => $rec['archivo_ruta'],
+                                                'archivo_tipo' => $rec['archivo_tipo']
+                                            ]), ENT_QUOTES, 'UTF-8'); ?>">
+                                ✓ <?php echo htmlspecialchars($rec['folio'] . ' - ' . $rec['cliente']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </optgroup>
+                <?php endif; ?>
             </select>
+            <button type="button" id="btn-ver-recibo-solar" class="btn-ver-recibo-inline" onclick="abrirModal(this)">
+                📄 Ver Recibo CFE
+            </button>
         </div>
     <?php endif; ?>
 
@@ -247,7 +254,7 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
             <div class="customer-info">
                 <label>NOMBRE:</label>
                 <textarea id="sol-cliente" placeholder="Ingresa el nombre del cliente o empresa" rows="1"
-                    oninput="autoResizeEl(this); actualizarBannerSolar();"></textarea>
+                    oninput="autoResizeEl(this);"></textarea>
                 <label>NO. DE SERVICIO:</label>
                 <textarea id="sol-servicio" placeholder="Ingresa el número de servicio CFE (12 dígitos)" rows="1"
                     oninput="autoResizeEl(this)"></textarea>
@@ -255,9 +262,7 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
 
             <!-- TABLA SISTEMA SOLAR -->
             <div class="solar-box-wrapper">
-                <div class="solar-banner-header">
-
-                </div>
+                <div class="solar-banner-header"></div>
                 <table class="solar-spec-table">
                     <tr>
                         <td class="solar-label">
@@ -307,20 +312,19 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
 </div>
 
 <script>
+    let solarGuardadaId = null;
+
     function autoResizeEl(el) {
         el.style.height = 'auto';
         el.style.height = el.scrollHeight + 'px';
     }
 
-    function actualizarBannerSolar() {
-        const bannerEl = document.getElementById('sol-banner-cliente');
-        if (!bannerEl) return;
-        const val = document.getElementById('sol-cliente').value.trim();
-        bannerEl.innerText = val !== '' ? val.toUpperCase() : 'CLIENTE';
-    }
-
     function cargarDesdeReciboSolar(selectEl) {
-        if (!selectEl.value) return;
+        const btnRec = document.getElementById('btn-ver-recibo-solar');
+        if (!selectEl.value) {
+            if (btnRec) btnRec.style.display = 'none';
+            return;
+        }
         const data = JSON.parse(selectEl.value);
         const cEl = document.getElementById('sol-cliente');
         const sEl = document.getElementById('sol-servicio');
@@ -330,7 +334,12 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
 
         autoResizeEl(cEl);
         autoResizeEl(sEl);
-        actualizarBannerSolar();
+
+        if (btnRec && data.archivo_ruta) {
+            btnRec.setAttribute('data-doc', selectEl.value);
+            btnRec.style.display = 'inline-block';
+        }
+
         document.getElementById('sol-paneles').focus();
     }
 
@@ -345,8 +354,6 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
         if (paneles > 0) {
             const kw = (paneles * watts) / 1000;
             document.getElementById('sol-kw').value = parseFloat(kw.toFixed(2));
-
-            // Estimación de área requerida (~2.8 m² por panel incluyendo estructura y pasillos)
             document.getElementById('sol-m2').value = Math.ceil(paneles * 2.8);
 
             const minInv = Math.round(kw * 17550);
@@ -360,7 +367,7 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
     }
 
     async function guardarSolarEImprimir() {
-        const cliente = document.getElementById('sol-cliente').value.trim();
+        const cliente = document.getElementById('sol-cliente').value.replace(/\s+/g, ' ').trim();
         if (!cliente) {
             alert("Por favor ingresa el Nombre del cliente antes de guardar.");
             document.getElementById('sol-cliente').focus();
@@ -368,6 +375,9 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
         }
 
         const payload = {
+            ...(solarGuardadaId ? {
+                id: solarGuardadaId
+            } : {}),
             cliente: cliente,
             servicio_cfe: document.getElementById('sol-servicio').value.trim(),
             paneles: parseInt(document.getElementById('sol-paneles').value) || 0,
@@ -388,13 +398,22 @@ if ($res_rec_opt && $res_rec_opt->num_rows > 0) {
                 body: JSON.stringify(payload)
             });
             const data = await res.json();
-            if (data.status === 'success' && data.folio) {
-                document.getElementById('sol-folio-number').innerText = data.folio;
+            if (data.status === 'success') {
+                if (data.folio) document.getElementById('sol-folio-number').innerText = data.folio;
+                if (data.id) solarGuardadaId = data.id;
             }
         } catch (e) {
             console.error("Error al guardar cotización solar:", e);
         }
 
+        const tituloOriginal = document.title;
+        const folioTxt = document.getElementById('sol-folio-number').innerText.trim();
+        document.title = `Cotizacion ${folioTxt} ${cliente}`.trim();
+
         window.print();
+
+        setTimeout(() => {
+            document.title = tituloOriginal;
+        }, 500);
     }
 </script>

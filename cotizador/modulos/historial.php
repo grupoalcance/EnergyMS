@@ -199,8 +199,10 @@ uasort($expedientes, function ($a, $b) {
 });
 
 $lista_estatus = [
-    'Prospecto',
-    'Cotización Enviada',
+    'Pendiente Solar',
+    'Pendiente EMS',
+    'Cotización Completa',
+    'Enviada al Cliente',
     'Anticipo 60% Pagado',
     'En Fabricación',
     'Instalado / Liquidado',
@@ -346,13 +348,25 @@ $metodos_pago = ['', 'Transferencia', 'Depósito', 'Efectivo', 'Cheque', 'Tarjet
         outline: none;
     }
 
-    .status-select[data-st="Prospecto"] {
-        background: #f3f4f6;
-        color: #374151;
-        border-color: #d1d5db;
+    .status-select[data-st="Pendiente Solar"] {
+        background: #fef3c7;
+        color: #b45309;
+        border-color: #fcd34d;
     }
 
-    .status-select[data-st="Cotización Enviada"] {
+    .status-select[data-st="Pendiente EMS"] {
+        background: #dbeafe;
+        color: #1e40af;
+        border-color: #93c5fd;
+    }
+
+    .status-select[data-st="Cotización Completa"] {
+        background: #e0e7ff;
+        color: #3730a3;
+        border-color: #c7d2fe;
+    }
+
+    .status-select[data-st="Enviada al Cliente"] {
         background: #eff6ff;
         color: #1d4ed8;
         border-color: #bfdbfe;
@@ -699,8 +713,17 @@ $metodos_pago = ['', 'Transferencia', 'Depósito', 'Efectivo', 'Cheque', 'Tarjet
             <?php foreach ($expedientes as $exp): ?>
                 <?php
                 $clave = $exp['clave'];
+
+                // Estatus sugerido automáticamente según documentos existentes si aún no tiene registro manual
+                $estatus_sugerido = 'Pendiente Solar';
+                if ($exp['ems_id'] > 0) {
+                    $estatus_sugerido = 'Cotización Completa';
+                } elseif ($exp['solar_id'] > 0) {
+                    $estatus_sugerido = 'Pendiente EMS';
+                }
+
                 $seg = $seguimientos[$clave] ?? [
-                    'estatus'                 => 'Prospecto',
+                    'estatus'                 => $estatus_sugerido,
                     'anticipo_pagado'         => 0,
                     'anticipo_fecha'          => '',
                     'anticipo_metodo'         => '',
@@ -712,7 +735,11 @@ $metodos_pago = ['', 'Transferencia', 'Depósito', 'Efectivo', 'Cheque', 'Tarjet
                     'notas'                   => ''
                 ];
 
-                $estatus_actual = $seg['estatus'] ?: 'Prospecto';
+                $estatus_actual = !empty($seg['estatus']) ? $seg['estatus'] : $estatus_sugerido;
+                if (!in_array($estatus_actual, $lista_estatus, true)) {
+                    $estatus_actual = $estatus_sugerido;
+                }
+
                 $ant_ok = intval($seg['anticipo_pagado']) === 1;
                 $liq_ok = intval($seg['liquidacion_pagada']) === 1;
 
@@ -733,7 +760,7 @@ $metodos_pago = ['', 'Transferencia', 'Depósito', 'Efectivo', 'Cheque', 'Tarjet
                     } elseif ($ant_ok && !$liq_ok) {
                         $tiene_saldo_pendiente = '1';
                         $etiqueta_cobranza = "<span class='cobranza-mini-tag cob-pendiente'>Resta 40%: $" . number_format($res_f, 2) . "</span>";
-                    } elseif (!$ant_ok && $estatus_actual !== 'Prospecto') {
+                    } elseif (!$ant_ok) {
                         $tiene_saldo_pendiente = '1';
                         $etiqueta_cobranza = "<span class='cobranza-mini-tag cob-pendiente'>Pendiente 60%: $" . number_format($ant_f, 2) . "</span>";
                     }

@@ -6,6 +6,7 @@ if (!isset($_SESSION['logeado']) || $_SESSION['logeado'] !== true) {
 }
 
 include 'conexion.php';
+include 'includes/flujo_helper.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $cliente      = trim($_POST['cliente'] ?? '');
@@ -54,6 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $nuevo_id = $stmt->insert_id;
             $folio_final = 'REC-' . str_pad($nuevo_id, 4, '0', STR_PAD_LEFT);
             $conn->query("UPDATE recibos_cfe SET folio = '$folio_final' WHERE id = $nuevo_id");
+
+            // Marcar expediente como Pendiente Solar automáticamente
+            avanzarEstatusExpediente($conn, $cliente, $servicio, 'Pendiente Solar');
 
             header("Location: dashboard.php?seccion=recibos&ok=1&folio=" . urlencode($folio_final));
             exit;
