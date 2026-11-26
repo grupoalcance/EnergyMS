@@ -23,6 +23,7 @@ $obtenerClave = function ($cliente, $servicio) {
 $asegurarExpediente = function (&$expedientes, $clave, $cliente, $servicio, $demanda, $fecha) {
     if (!isset($expedientes[$clave])) {
         $expedientes[$clave] = [
+            'clave'        => $clave,
             'cliente'      => $cliente ?: 'Sin nombre',
             'servicio'     => $servicio ?: '',
             'tipo_demanda' => $demanda ?: '',
@@ -183,10 +184,30 @@ if ($re && $re->num_rows > 0) {
     }
 }
 
+// 4. Cargar Seguimiento y Cobranza por expediente
+$seguimientos = [];
+$rseg = @$conn->query("SELECT * FROM expedientes_seguimiento");
+if ($rseg && $rseg->num_rows > 0) {
+    while ($s = $rseg->fetch_assoc()) {
+        $seguimientos[$s['clave_exp']] = $s;
+    }
+}
+
 // Ordenar expedientes por fecha más reciente
 uasort($expedientes, function ($a, $b) {
     return strtotime($b['ultima_fecha']) - strtotime($a['ultima_fecha']);
 });
+
+$lista_estatus = [
+    'Prospecto',
+    'Cotización Enviada',
+    'Anticipo 60% Pagado',
+    'En Fabricación',
+    'Instalado / Liquidado',
+    'Descartado'
+];
+
+$metodos_pago = ['', 'Transferencia', 'Depósito', 'Efectivo', 'Cheque', 'Tarjeta'];
 ?>
 
 <style>
@@ -199,17 +220,30 @@ uasort($expedientes, function ($a, $b) {
         margin-bottom: 18px;
     }
 
-    .search-exp {
+    .toolbar-left {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .search-exp,
+    .select-estatus-filter {
         padding: 9px 14px;
         border: 1px solid #d1d5db;
         border-radius: 8px;
         font-size: 13.5px;
         font-family: inherit;
-        min-width: 240px;
         outline: none;
+        background: #fff;
     }
 
-    .search-exp:focus {
+    .search-exp {
+        min-width: 240px;
+    }
+
+    .search-exp:focus,
+    .select-estatus-filter:focus {
         border-color: var(--brand-green);
     }
 
@@ -271,7 +305,7 @@ uasort($expedientes, function ($a, $b) {
     .exp-info {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 5px;
     }
 
     .exp-client-name {
@@ -290,6 +324,7 @@ uasort($expedientes, function ($a, $b) {
         display: flex;
         flex-wrap: wrap;
         gap: 12px;
+        align-items: center;
     }
 
     .exp-right {
@@ -297,6 +332,73 @@ uasort($expedientes, function ($a, $b) {
         align-items: center;
         flex-wrap: wrap;
         gap: 8px;
+    }
+
+    /* Selector de estatus con color dinámico */
+    .status-select {
+        font-size: 12px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d1d5db;
+        font-family: inherit;
+        cursor: pointer;
+        outline: none;
+    }
+
+    .status-select[data-st="Prospecto"] {
+        background: #f3f4f6;
+        color: #374151;
+        border-color: #d1d5db;
+    }
+
+    .status-select[data-st="Cotización Enviada"] {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border-color: #bfdbfe;
+    }
+
+    .status-select[data-st="Anticipo 60% Pagado"] {
+        background: #fefce8;
+        color: #a16207;
+        border-color: #fde047;
+    }
+
+    .status-select[data-st="En Fabricación"] {
+        background: #fff7ed;
+        color: #c2410c;
+        border-color: #fed7aa;
+    }
+
+    .status-select[data-st="Instalado / Liquidado"] {
+        background: #f0fdf4;
+        color: #15803d;
+        border-color: #86efac;
+    }
+
+    .status-select[data-st="Descartado"] {
+        background: #fef2f2;
+        color: #b91c1c;
+        border-color: #fecaca;
+    }
+
+    .cobranza-mini-tag {
+        font-size: 11.5px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 6px;
+    }
+
+    .cob-pendiente {
+        background: #fff7ed;
+        color: #c2410c;
+        border: 1px solid #fed7aa;
+    }
+
+    .cob-liquidado {
+        background: #f0fdf4;
+        color: #15803d;
+        border: 1px solid #bbf7d0;
     }
 
     .doc-pill {
@@ -377,8 +479,185 @@ uasort($expedientes, function ($a, $b) {
         display: block;
     }
 
+    /* Panel CRM + Cobranza dentro del expediente */
+    .crm-panel {
+        background: #f8fafc;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 18px 20px;
+        display: grid;
+        grid-template-columns: 1.45fr 1fr;
+        gap: 18px;
+    }
+
+    .crm-box {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 14px 16px;
+    }
+
+    .crm-box-title {
+        font-size: 13px;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: #111827;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 8px;
+    }
+
+    .pay-stage {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 10px;
+        background: #f9fafb;
+    }
+
+    .pay-stage.paid {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+    }
+
+    .pay-stage-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .pay-chk-label {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-weight: 700;
+        font-size: 13.5px;
+        color: #111827;
+        cursor: pointer;
+    }
+
+    .pay-amount-tag {
+        font-size: 14px;
+        font-weight: 800;
+        color: #15803d;
+    }
+
+    .pay-controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .pay-controls input[type="date"],
+    .pay-controls select {
+        padding: 6px 8px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 12.5px;
+        font-family: inherit;
+        background: #fff;
+    }
+
+    .comp-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-file-mini {
+        background: #e2e8f0;
+        color: #1e293b;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 11.5px;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .btn-file-mini:hover {
+        background: #cbd5e1;
+    }
+
+    .link-comp {
+        font-size: 12px;
+        font-weight: 700;
+        color: #2563eb;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .link-comp:hover {
+        text-decoration: underline;
+    }
+
+    .crm-notes-area {
+        width: 100%;
+        min-height: 105px;
+        border: 1px solid #cbd5e1;
+        border-radius: 7px;
+        padding: 9px 11px;
+        font-family: inherit;
+        font-size: 13px;
+        resize: vertical;
+        outline: none;
+    }
+
+    .crm-notes-area:focus {
+        border-color: var(--brand-green);
+    }
+
+    .crm-footer-save {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .btn-save-crm {
+        background: #111827;
+        color: #fff;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 7px;
+        font-size: 12.5px;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+    }
+
+    .btn-save-crm:hover {
+        background: #374151;
+    }
+
+    .crm-saved-msg {
+        font-size: 12px;
+        font-weight: 700;
+        color: #15803d;
+        display: none;
+    }
+
+    @media (max-width: 900px) {
+        .crm-panel {
+            grid-template-columns: 1fr;
+        }
+
+        .pay-controls {
+            grid-template-columns: 1fr;
+        }
+    }
+
     @media (max-width: 820px) {
-        .search-exp {
+
+        .search-exp,
+        .select-estatus-filter {
             width: 100%;
         }
 
@@ -396,10 +675,19 @@ uasort($expedientes, function ($a, $b) {
 <h1 class="section-heading">Expedientes de Clientes</h1>
 <div class="card">
     <div class="historial-toolbar">
-        <input type="text" id="buscador-exp" class="search-exp" placeholder="🔍 Buscar cliente o No. de Servicio..." oninput="filtrarExpedientes()">
+        <div class="toolbar-left">
+            <input type="text" id="buscador-exp" class="search-exp" placeholder="🔍 Buscar cliente o No. de Servicio..." oninput="filtrarExpedientes()">
+            <select id="filtro-estatus-exp" class="select-estatus-filter" onchange="filtrarExpedientes()">
+                <option value="">📌 Todos los estatus</option>
+                <?php foreach ($lista_estatus as $st_opt): ?>
+                    <option value="<?php echo htmlspecialchars($st_opt); ?>"><?php echo htmlspecialchars($st_opt); ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
 
         <div class="filter-pills" id="historial-filters">
             <button type="button" class="filter-pill active" onclick="setFiltroExp('todos', this)">Todos</button>
+            <button type="button" class="filter-pill" onclick="setFiltroExp('por_cobrar', this)">💰 Cobranza Pendiente</button>
             <button type="button" class="filter-pill" onclick="setFiltroExp('gran_demanda', this)">🏭 Gran Demanda</button>
             <button type="button" class="filter-pill" onclick="setFiltroExp('baja_demanda', this)">🏠 Baja Demanda</button>
             <button type="button" class="filter-pill" onclick="setFiltroExp('completos', this)">✅ Completos (3/3)</button>
@@ -410,6 +698,47 @@ uasort($expedientes, function ($a, $b) {
         <?php if (count($expedientes) > 0): ?>
             <?php foreach ($expedientes as $exp): ?>
                 <?php
+                $clave = $exp['clave'];
+                $seg = $seguimientos[$clave] ?? [
+                    'estatus'                 => 'Prospecto',
+                    'anticipo_pagado'         => 0,
+                    'anticipo_fecha'          => '',
+                    'anticipo_metodo'         => '',
+                    'anticipo_comprobante'    => '',
+                    'liquidacion_pagada'      => 0,
+                    'liquidacion_fecha'       => '',
+                    'liquidacion_metodo'      => '',
+                    'liquidacion_comprobante' => '',
+                    'notas'                   => ''
+                ];
+
+                $estatus_actual = $seg['estatus'] ?: 'Prospecto';
+                $ant_ok = intval($seg['anticipo_pagado']) === 1;
+                $liq_ok = intval($seg['liquidacion_pagada']) === 1;
+
+                // Montos de referencia desde la cotización EMS (si existe)
+                $monto_total_ems = $exp['ems_doc'] ? '$' . $exp['ems_doc']['total'] : '$0.00';
+                $monto_ant_ems   = $exp['ems_doc'] ? '$' . $exp['ems_doc']['anticipo'] : 'Sin cotizar EMS';
+                $monto_res_ems   = $exp['ems_doc'] ? '$' . $exp['ems_doc']['restante'] : 'Sin cotizar EMS';
+
+                // Calcular saldo pendiente para etiqueta rápida
+                $tiene_saldo_pendiente = '0';
+                $etiqueta_cobranza = '';
+                if ($exp['ems_doc'] && $estatus_actual !== 'Descartado') {
+                    $ant_f = floatval(str_replace(',', '', $exp['ems_doc']['anticipo']));
+                    $res_f = floatval(str_replace(',', '', $exp['ems_doc']['restante']));
+
+                    if ($ant_ok && $liq_ok) {
+                        $etiqueta_cobranza = "<span class='cobranza-mini-tag cob-liquidado'>✓ 100% Liquidado</span>";
+                    } elseif ($ant_ok && !$liq_ok) {
+                        $tiene_saldo_pendiente = '1';
+                        $etiqueta_cobranza = "<span class='cobranza-mini-tag cob-pendiente'>Resta 40%: $" . number_format($res_f, 2) . "</span>";
+                    } elseif (!$ant_ok && $estatus_actual !== 'Prospecto') {
+                        $tiene_saldo_pendiente = '1';
+                        $etiqueta_cobranza = "<span class='cobranza-mini-tag cob-pendiente'>Pendiente 60%: $" . number_format($ant_f, 2) . "</span>";
+                    }
+                }
+
                 $dem = $exp['tipo_demanda'];
                 $cat_dem = ($dem === 'Gran Demanda') ? 'gran_demanda' : (($dem === 'Baja Demanda') ? 'baja_demanda' : 'otro');
                 $es_completo = ($exp['recibo_id'] > 0 && $exp['solar_id'] > 0 && $exp['ems_id'] > 0) ? '1' : '0';
@@ -417,9 +746,13 @@ uasort($expedientes, function ($a, $b) {
                 $texto_busqueda = strtolower($exp['cliente'] . ' ' . $exp['servicio']);
                 ?>
                 <div class="exp-card"
+                    id="card-<?php echo htmlspecialchars($clave); ?>"
                     data-demanda="<?php echo $cat_dem; ?>"
                     data-completo="<?php echo $es_completo; ?>"
+                    data-estatus="<?php echo htmlspecialchars($estatus_actual); ?>"
+                    data-porcobrar="<?php echo $tiene_saldo_pendiente; ?>"
                     data-search="<?php echo htmlspecialchars($texto_busqueda, ENT_QUOTES, 'UTF-8'); ?>">
+
                     <div class="exp-header" onclick="this.parentElement.classList.toggle('open')">
                         <div class="exp-info">
                             <div class="exp-client-name">
@@ -429,10 +762,24 @@ uasort($expedientes, function ($a, $b) {
                                 <?php elseif ($dem === 'Baja Demanda'): ?>
                                     <span class="badge baja-demanda">Baja Demanda</span>
                                 <?php endif; ?>
+
+                                <!-- Selector rápido de Estatus -->
+                                <select class="status-select"
+                                    id="st-head-<?php echo htmlspecialchars($clave); ?>"
+                                    data-st="<?php echo htmlspecialchars($estatus_actual); ?>"
+                                    onclick="event.stopPropagation()"
+                                    onchange="cambioRapidoEstatus('<?php echo htmlspecialchars($clave); ?>', this)">
+                                    <?php foreach ($lista_estatus as $st_item): ?>
+                                        <option value="<?php echo htmlspecialchars($st_item); ?>" <?php echo ($estatus_actual === $st_item) ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($st_item); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
                             <div class="exp-meta">
                                 <span><strong>Servicio CFE:</strong> <?php echo $exp['servicio'] ? htmlspecialchars($exp['servicio']) : 'Sin registrar'; ?></span>
                                 <span><strong>Última actividad:</strong> <?php echo date("d/m/Y h:i A", strtotime($exp['ultima_fecha'])); ?></span>
+                                <?php echo $etiqueta_cobranza; ?>
                             </div>
                         </div>
 
@@ -466,6 +813,105 @@ uasort($expedientes, function ($a, $b) {
                     </div>
 
                     <div class="exp-body">
+                        <!-- PANEL DE COBRANZA Y SEGUIMIENTO -->
+                        <form class="crm-panel" id="form-seg-<?php echo htmlspecialchars($clave); ?>" onsubmit="guardarSeguimientoExp(event, '<?php echo htmlspecialchars($clave); ?>')">
+                            <input type="hidden" name="clave_exp" value="<?php echo htmlspecialchars($clave); ?>">
+                            <input type="hidden" name="estatus" id="st-hidden-<?php echo htmlspecialchars($clave); ?>" value="<?php echo htmlspecialchars($estatus_actual); ?>">
+
+                            <!-- Columna 1: Control de Cobranza 60% / 40% -->
+                            <div class="crm-box">
+                                <div class="crm-box-title">
+                                    <span>💰 Control de Cobranza (60% / 40%)</span>
+                                    <?php if ($exp['ems_doc']): ?>
+                                        <span style="color:#4b5563; font-size:12px;">Total EMS: <?php echo htmlspecialchars($monto_total_ems); ?></span>
+                                    <?php endif; ?>
+                                </div>
+
+                                <!-- Anticipo 60% -->
+                                <div class="pay-stage <?php echo $ant_ok ? 'paid' : ''; ?>" id="stage-ant-<?php echo htmlspecialchars($clave); ?>">
+                                    <div class="pay-stage-top">
+                                        <label class="pay-chk-label">
+                                            <input type="checkbox" name="anticipo_pagado" value="1" <?php echo $ant_ok ? 'checked' : ''; ?>
+                                                onchange="document.getElementById('stage-ant-<?php echo htmlspecialchars($clave); ?>').classList.toggle('paid', this.checked)">
+                                            Anticipo 60% Pagado
+                                        </label>
+                                        <span class="pay-amount-tag"><?php echo htmlspecialchars($monto_ant_ems); ?></span>
+                                    </div>
+                                    <div class="pay-controls">
+                                        <input type="date" name="anticipo_fecha" value="<?php echo htmlspecialchars($seg['anticipo_fecha'] ?? ''); ?>" title="Fecha de pago del anticipo">
+                                        <select name="anticipo_metodo">
+                                            <?php foreach ($metodos_pago as $mp): ?>
+                                                <option value="<?php echo $mp; ?>" <?php echo (($seg['anticipo_metodo'] ?? '') === $mp) ? 'selected' : ''; ?>>
+                                                    <?php echo $mp ?: '-- Método de pago --'; ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <div class="comp-actions">
+                                            <label class="btn-file-mini">
+                                                📎 Comprobante
+                                                <input type="file" name="file_anticipo" accept=".pdf,image/*" style="display:none;"
+                                                    onchange="this.parentElement.childNodes[0].nodeValue = '📎 Listo '">
+                                            </label>
+                                            <a id="link-ant-<?php echo htmlspecialchars($clave); ?>"
+                                                href="<?php echo htmlspecialchars($seg['anticipo_comprobante'] ?? '#'); ?>"
+                                                target="_blank"
+                                                class="link-comp"
+                                                style="<?php echo !empty($seg['anticipo_comprobante']) ? '' : 'display:none;'; ?>">Ver</a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Liquidación 40% -->
+                                <div class="pay-stage <?php echo $liq_ok ? 'paid' : ''; ?>" id="stage-liq-<?php echo htmlspecialchars($clave); ?>" style="margin-bottom:0;">
+                                    <div class="pay-stage-top">
+                                        <label class="pay-chk-label">
+                                            <input type="checkbox" name="liquidacion_pagada" value="1" <?php echo $liq_ok ? 'checked' : ''; ?>
+                                                onchange="document.getElementById('stage-liq-<?php echo htmlspecialchars($clave); ?>').classList.toggle('paid', this.checked)">
+                                            Restante 40% (Al instalar)
+                                        </label>
+                                        <span class="pay-amount-tag"><?php echo htmlspecialchars($monto_res_ems); ?></span>
+                                    </div>
+                                    <div class="pay-controls">
+                                        <input type="date" name="liquidacion_fecha" value="<?php echo htmlspecialchars($seg['liquidacion_fecha'] ?? ''); ?>" title="Fecha de liquidación">
+                                        <select name="liquidacion_metodo">
+                                            <?php foreach ($metodos_pago as $mp): ?>
+                                                <option value="<?php echo $mp; ?>" <?php echo (($seg['liquidacion_metodo'] ?? '') === $mp) ? 'selected' : ''; ?>>
+                                                    <?php echo $mp ?: '-- Método de pago --'; ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <div class="comp-actions">
+                                            <label class="btn-file-mini">
+                                                📎 Comprobante
+                                                <input type="file" name="file_liquidacion" accept=".pdf,image/*" style="display:none;"
+                                                    onchange="this.parentElement.childNodes[0].nodeValue = '📎 Listo '">
+                                            </label>
+                                            <a id="link-liq-<?php echo htmlspecialchars($clave); ?>"
+                                                href="<?php echo htmlspecialchars($seg['liquidacion_comprobante'] ?? '#'); ?>"
+                                                target="_blank"
+                                                class="link-comp"
+                                                style="<?php echo !empty($seg['liquidacion_comprobante']) ? '' : 'display:none;'; ?>">Ver</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Columna 2: Bitácora / Notas de seguimiento -->
+                            <div class="crm-box" style="display:flex; flex-direction:column; justify-content:space-between;">
+                                <div>
+                                    <div class="crm-box-title">
+                                        <span>📝 Bitácora y Notas de Seguimiento</span>
+                                    </div>
+                                    <textarea name="notas" class="crm-notes-area" placeholder="Escribe acuerdos, llamadas, fechas tentativa de instalación o comentarios del cliente..."><?php echo htmlspecialchars($seg['notas'] ?? ''); ?></textarea>
+                                </div>
+                                <div class="crm-footer-save">
+                                    <span class="crm-saved-msg" id="msg-seg-<?php echo htmlspecialchars($clave); ?>">✓ Guardado</span>
+                                    <button type="submit" class="btn-save-crm">💾 Guardar Cobranza y Notas</button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- TABLA DE ARCHIVOS DEL EXPEDIENTE -->
                         <div class="table-container" style="margin-top:0;">
                             <table class="dash-table">
                                 <thead>
@@ -536,15 +982,92 @@ uasort($expedientes, function ($a, $b) {
 
     function filtrarExpedientes() {
         const q = (document.getElementById('buscador-exp')?.value || '').trim().toLowerCase();
+        const stFiltro = document.getElementById('filtro-estatus-exp')?.value || '';
+
         document.querySelectorAll('#lista-expedientes .exp-card').forEach(card => {
             const matchTexto = !q || card.dataset.search.includes(q);
+            const matchEstatus = !stFiltro || card.dataset.estatus === stFiltro;
+
             let matchFiltro = true;
             if (filtroActualExp === 'gran_demanda' || filtroActualExp === 'baja_demanda') {
                 matchFiltro = (card.dataset.demanda === filtroActualExp);
             } else if (filtroActualExp === 'completos') {
                 matchFiltro = (card.dataset.completo === '1');
+            } else if (filtroActualExp === 'por_cobrar') {
+                matchFiltro = (card.dataset.porcobrar === '1');
             }
-            card.style.display = (matchTexto && matchFiltro) ? '' : 'none';
+
+            card.style.display = (matchTexto && matchEstatus && matchFiltro) ? '' : 'none';
         });
+    }
+
+    async function cambioRapidoEstatus(clave, selectEl) {
+        selectEl.setAttribute('data-st', selectEl.value);
+        const hiddenInput = document.getElementById('st-hidden-' + clave);
+        if (hiddenInput) hiddenInput.value = selectEl.value;
+
+        const card = document.getElementById('card-' + clave);
+        if (card) card.dataset.estatus = selectEl.value;
+
+        await enviarFormularioSeguimiento(clave);
+    }
+
+    async function guardarSeguimientoExp(e, clave) {
+        e.preventDefault();
+        await enviarFormularioSeguimiento(clave);
+    }
+
+    async function enviarFormularioSeguimiento(clave) {
+        const form = document.getElementById('form-seg-' + clave);
+        if (!form) return;
+
+        const fd = new FormData(form);
+        try {
+            const res = await fetch('guardar_seguimiento.php', {
+                method: 'POST',
+                body: fd
+            });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                const stHead = document.getElementById('st-head-' + clave);
+                const stHidden = document.getElementById('st-hidden-' + clave);
+                const card = document.getElementById('card-' + clave);
+                if (data.estatus && stHead) {
+                    stHead.value = data.estatus;
+                    stHead.setAttribute('data-st', data.estatus);
+                    if (stHidden) stHidden.value = data.estatus;
+                    if (card) card.dataset.estatus = data.estatus;
+                }
+
+                if (data.anticipo_comprobante) {
+                    const lAnt = document.getElementById('link-ant-' + clave);
+                    if (lAnt) {
+                        lAnt.href = data.anticipo_comprobante;
+                        lAnt.style.display = 'inline';
+                    }
+                }
+                if (data.liquidacion_comprobante) {
+                    const lLiq = document.getElementById('link-liq-' + clave);
+                    if (lLiq) {
+                        lLiq.href = data.liquidacion_comprobante;
+                        lLiq.style.display = 'inline';
+                    }
+                }
+
+                const msg = document.getElementById('msg-seg-' + clave);
+                if (msg) {
+                    msg.style.display = 'inline';
+                    setTimeout(() => {
+                        msg.style.display = 'none';
+                    }, 2500);
+                }
+            } else {
+                alert('Error al guardar: ' + (data.message || 'Desconocido'));
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error de conexión al guardar el seguimiento.');
+        }
     }
 </script>
