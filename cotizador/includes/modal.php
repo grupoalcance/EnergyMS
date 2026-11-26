@@ -101,6 +101,25 @@
         flex-shrink: 0;
     }
 
+    /* Casilla incluir costo de fabricación en modal */
+    .modal-chk-fab {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #ffffff;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .modal-chk-fab input {
+        width: 15px;
+        height: 15px;
+        accent-color: #2563eb;
+        cursor: pointer;
+    }
+
     /* Estilos Costo de Fabricación en Modal EMS */
     #modal-page .fab-box {
         background-color: #f8fafc;
@@ -212,6 +231,11 @@
         color: #111827;
     }
 
+    /* Ocultar Costo de Fabricación en pantalla y al imprimir */
+    body.modal-ocultar-fab #modal-page .fab-box {
+        display: none !important;
+    }
+
     @media (max-width: 820px) {
         #modal-solar-page .solar-banner-header {
             flex-direction: column;
@@ -264,6 +288,10 @@
     }
 
     @media print {
+        body.modal-ocultar-fab #modal-page .fab-box {
+            display: none !important;
+        }
+
         #modal-solar-page .solar-box-wrapper {
             margin: 14px 0 20px 0 !important;
             border-radius: 6px !important;
@@ -307,6 +335,11 @@
                 <span id="modal-save-feedback" class="save-feedback">✓ Guardado</span>
             </div>
             <div class="modal-actions">
+                <label id="wrap-modal-chk-fab" class="modal-chk-fab" style="display:none;">
+                    <input type="checkbox" id="chk-modal-incluir-fab" checked
+                        onchange="document.body.classList.toggle('modal-ocultar-fab', !this.checked)">
+                    Incluir Costo de Fabricación
+                </label>
                 <button type="button" id="btn-modal-edit" class="btn-modal-edit" onclick="toggleEdicionModal()">✏️
                     Editar</button>
                 <a id="btn-modal-download" href="#" download class="btn-modal-edit" style="display:none;">Descargar</a>

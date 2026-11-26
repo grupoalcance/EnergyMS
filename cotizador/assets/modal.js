@@ -374,7 +374,26 @@ function mostrarFeedbackGuardado() {
 async function imprimirDesdeModal() {
   if (currentModalDocType === "ems" || currentModalDocType === "solar") {
     if (isEditingModal) await toggleEdicionModal();
+
+    const tituloOriginal = document.title;
+    const folio = (
+      currentModalDocType === "solar"
+        ? document.getElementById("ms-folio")?.innerText || ""
+        : document.getElementById("m-folio")?.innerText || ""
+    ).trim();
+    const cliente = (
+      currentModalDocType === "solar"
+        ? document.getElementById("ms-cliente")?.value || "Cliente"
+        : document.getElementById("m-cliente")?.value || "Cliente"
+    )
+      .replace(/\s+/g, " ")
+      .trim();
+
+    document.title = `Cotizacion ${folio} ${cliente}`.trim();
     window.print();
+    setTimeout(() => {
+      document.title = tituloOriginal;
+    }, 500);
   } else {
     const iframe = document.getElementById("r-iframe");
     if (iframe && iframe.style.display !== "none" && iframe.contentWindow) {
@@ -396,12 +415,18 @@ function abrirModal(btn) {
   const vRec = document.getElementById("modal-recibo-view");
   const bEdit = document.getElementById("btn-modal-edit");
   const bDown = document.getElementById("btn-modal-download");
+  const wrapFab = document.getElementById("wrap-modal-chk-fab");
+  const chkFab = document.getElementById("chk-modal-incluir-fab");
+
+  document.body.classList.remove("modal-ocultar-fab");
+  if (chkFab) chkFab.checked = true;
 
   if (currentModalDocType === "recibo") {
     if (pEms) pEms.style.display = "none";
     if (pSol) pSol.style.display = "none";
     if (vRec) vRec.style.display = "block";
     if (bEdit) bEdit.style.display = "none";
+    if (wrapFab) wrapFab.style.display = "none";
     if (bDown) {
       bDown.style.display = "inline-block";
       bDown.href = doc.archivo_ruta;
@@ -429,6 +454,7 @@ function abrirModal(btn) {
     if (vRec) vRec.style.display = "none";
     if (pSol) pSol.style.display = "flex";
     if (bEdit) bEdit.style.display = "inline-block";
+    if (wrapFab) wrapFab.style.display = "none";
     if (bDown) bDown.style.display = "none";
 
     document.getElementById("modal-folio-label").innerText =
@@ -448,6 +474,7 @@ function abrirModal(btn) {
     if (pSol) pSol.style.display = "none";
     if (pEms) pEms.style.display = "flex";
     if (bEdit) bEdit.style.display = "inline-block";
+    if (wrapFab) wrapFab.style.display = "inline-flex";
     if (bDown) bDown.style.display = "none";
 
     document.getElementById("modal-folio-label").innerText =
@@ -504,6 +531,7 @@ function abrirModal(btn) {
 
 function cerrarModal() {
   setModalEditState(false);
+  document.body.classList.remove("modal-ocultar-fab");
   const ifr = document.getElementById("r-iframe");
   if (ifr) ifr.src = "";
   document.getElementById("docModal")?.classList.remove("open");

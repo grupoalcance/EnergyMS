@@ -12,23 +12,28 @@ $s_id = isset($_GET['s']) ? intval($_GET['s']) : 0;
 $e_id = isset($_GET['e']) ? intval($_GET['e']) : 0;
 
 $recibo = null;
-$solar  = null;
-$ems    = null;
+$solar = null;
+$ems = null;
 
 if ($r_id > 0) {
     $res = @$conn->query("SELECT * FROM recibos_cfe WHERE id = $r_id LIMIT 1");
-    if ($res && $res->num_rows > 0) $recibo = $res->fetch_assoc();
+    if ($res && $res->num_rows > 0)
+        $recibo = $res->fetch_assoc();
 }
 if ($s_id > 0) {
     $res = @$conn->query("SELECT * FROM cotizaciones_solares WHERE id = $s_id LIMIT 1");
-    if ($res && $res->num_rows > 0) $solar = $res->fetch_assoc();
+    if ($res && $res->num_rows > 0)
+        $solar = $res->fetch_assoc();
 }
 if ($e_id > 0) {
     $res = @$conn->query("SELECT * FROM cotizaciones WHERE id = $e_id LIMIT 1");
-    if ($res && $res->num_rows > 0) $ems = $res->fetch_assoc();
+    if ($res && $res->num_rows > 0)
+        $ems = $res->fetch_assoc();
 }
 
-$nombre_cliente = $ems['cliente'] ?? $solar['cliente'] ?? $recibo['cliente'] ?? 'Expediente';
+$nombre_cliente = trim(preg_replace('/\s+/', ' ', (string) ($ems['cliente'] ?? $solar['cliente'] ?? $recibo['cliente'] ?? 'Cliente')));
+$folio_principal = trim((string) ($ems['folio'] ?? $solar['folio'] ?? $recibo['folio'] ?? ''));
+$titulo_pdf = trim('Cotizacion ' . ($folio_principal !== '' ? $folio_principal . ' ' : '') . $nombre_cliente);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -36,7 +41,7 @@ $nombre_cliente = $ems['cliente'] ?? $solar['cliente'] ?? $recibo['cliente'] ?? 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expediente - <?php echo htmlspecialchars($nombre_cliente); ?></title>
+    <title><?php echo htmlspecialchars($titulo_pdf); ?></title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
@@ -215,19 +220,21 @@ $nombre_cliente = $ems['cliente'] ?? $solar['cliente'] ?? $recibo['cliente'] ?? 
 
         /* Recibo */
         .recibo-sheet-body {
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            flex-grow: 1;
+            padding: 14px 20px;
+            display: block;
+            text-align: center;
         }
 
-        .recibo-sheet-body img,
-        .recibo-sheet-body canvas {
+        .recibo-sheet-body img {
+            display: block;
+            margin: 0 auto;
+            width: auto;
+            height: auto;
             max-width: 100%;
-            max-height: 9.2in;
+            max-height: 8.8in;
             object-fit: contain;
+            page-break-inside: avoid;
+            break-inside: avoid;
         }
 
         /* Solar */
@@ -355,13 +362,19 @@ $nombre_cliente = $ems['cliente'] ?? $solar['cliente'] ?? $recibo['cliente'] ?? 
         }
 
         table.mini td.val {
-            text-align: right;
             font-weight: 700;
             color: #7b291d;
         }
 
         table.mini.fin td.val {
             color: #000;
+        }
+
+        .money-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
         }
 
         .pay-box {
@@ -384,6 +397,7 @@ $nombre_cliente = $ems['cliente'] ?? $solar['cliente'] ?? $recibo['cliente'] ?? 
         .pay-row {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             font-size: 13px;
             padding: 4px 0;
             border-bottom: 1px dashed #cbd5e0;
@@ -391,6 +405,13 @@ $nombre_cliente = $ems['cliente'] ?? $solar['cliente'] ?? $recibo['cliente'] ?? 
 
         .pay-row:last-child {
             border-bottom: none;
+        }
+
+        .pay-val-wrap {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-width: 130px;
         }
 
         .fab-box {
@@ -485,9 +506,23 @@ $nombre_cliente = $ems['cliente'] ?? $solar['cliente'] ?? $recibo['cliente'] ?? 
             .sheet {
                 margin: 0;
                 box-shadow: none;
-                width: 100%;
-                height: 11in;
-                min-height: 11in;
+                width: 8.5in;
+                height: 10.95in;
+                min-height: 10.95in;
+                overflow: hidden;
+                position: relative;
+                display: block;
+            }
+
+            .sheet footer {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+            }
+
+            .recibo-sheet-body img {
+                max-height: 8.8in !important;
             }
 
             * {
@@ -520,7 +555,10 @@ $nombre_cliente = $ems['cliente'] ?? $solar['cliente'] ?? $recibo['cliente'] ?? 
             <header>
                 <div style="text-align:left;">
                     <div class="folio-title">Recibo de Luz CFE</div>
-                    <div class="folio-number"><?php echo htmlspecialchars($recibo['folio']); ?> <?php echo $recibo['tipo_demanda'] ? '• ' . htmlspecialchars($recibo['tipo_demanda']) : ''; ?></div>
+                    <div class="folio-number">
+                        <?php echo htmlspecialchars($recibo['folio']); ?>
+                        <?php echo $recibo['tipo_demanda'] ? '• ' . htmlspecialchars($recibo['tipo_demanda']) : ''; ?>
+                    </div>
                 </div>
                 <img src="../img/energy.png" alt="EMS" class="logo-doc">
             </header>
@@ -588,9 +626,13 @@ $nombre_cliente = $ems['cliente'] ?? $solar['cliente'] ?? $recibo['cliente'] ?? 
     <!-- HOJA 3: COTIZACIÓN EMS + COSTO DE FABRICACIÓN -->
     <?php if ($ems): ?>
         <?php
+        $fmtMoney = function ($v) {
+            $n = floatval(preg_replace('/[^0-9.-]/', '', (string)$v));
+            return number_format($n, 2, '.', ',');
+        };
         $e_num = floatval(preg_replace('/[^0-9.-]/', '', $ems['energia_cfe']));
         $c_num = floatval(preg_replace('/[^0-9.-]/', '', $ems['cargo_cfe']));
-        $iva_cfe = '$' . number_format(($e_num + $c_num) * 0.16, 2, '.', ',');
+        $iva_cfe_num = number_format(($e_num + $c_num) * 0.16, 2, '.', ',');
         $dem_ems = $ems['tipo_demanda'] ?? '';
         $lbl_fab = ($dem_ems === 'Baja Demanda') ? 'Lectura total' : 'Demanda contratada (kW)';
         ?>
@@ -640,19 +682,27 @@ $nombre_cliente = $ems['cliente'] ?? $solar['cliente'] ?? $recibo['cliente'] ?? 
                         <table class="mini">
                             <tr>
                                 <td class="lbl">Energía:</td>
-                                <td class="val"><?php echo htmlspecialchars($ems['energia_cfe']); ?></td>
+                                <td class="val">
+                                    <div class="money-flex"><span>$</span><span><?php echo $fmtMoney($ems['energia_cfe']); ?></span></div>
+                                </td>
                             </tr>
                             <tr>
                                 <td class="lbl">Cargo fijo:</td>
-                                <td class="val"><?php echo htmlspecialchars($ems['cargo_cfe']); ?></td>
+                                <td class="val">
+                                    <div class="money-flex"><span>$</span><span><?php echo $fmtMoney($ems['cargo_cfe']); ?></span></div>
+                                </td>
                             </tr>
                             <tr>
                                 <td class="lbl">IVA:</td>
-                                <td class="val"><?php echo $iva_cfe; ?></td>
+                                <td class="val">
+                                    <div class="money-flex"><span>$</span><span><?php echo $iva_cfe_num; ?></span></div>
+                                </td>
                             </tr>
                             <tr>
                                 <td class="lbl">Total a pagar:</td>
-                                <td class="val"><?php echo htmlspecialchars($ems['total_cfe']); ?></td>
+                                <td class="val">
+                                    <div class="money-flex"><span>$</span><span><?php echo $fmtMoney($ems['total_cfe']); ?></span></div>
+                                </td>
                             </tr>
                         </table>
                     </div>
@@ -661,15 +711,21 @@ $nombre_cliente = $ems['cliente'] ?? $solar['cliente'] ?? $recibo['cliente'] ?? 
                         <table class="mini fin" style="margin-top:18px;">
                             <tr>
                                 <td class="lbl">Subtotal:</td>
-                                <td class="val"><?php echo htmlspecialchars($ems['subtotal']); ?></td>
+                                <td class="val">
+                                    <div class="money-flex"><span>$</span><span><?php echo $fmtMoney($ems['subtotal']); ?></span></div>
+                                </td>
                             </tr>
                             <tr>
                                 <td class="lbl">IVA:</td>
-                                <td class="val"><?php echo htmlspecialchars($ems['iva']); ?></td>
+                                <td class="val">
+                                    <div class="money-flex"><span>$</span><span><?php echo $fmtMoney($ems['iva']); ?></span></div>
+                                </td>
                             </tr>
                             <tr>
                                 <td class="lbl">Total:</td>
-                                <td class="val"><?php echo htmlspecialchars($ems['total']); ?></td>
+                                <td class="val">
+                                    <div class="money-flex"><span>$</span><span><?php echo $fmtMoney($ems['total']); ?></span></div>
+                                </td>
                             </tr>
                         </table>
                     </div>
@@ -677,8 +733,14 @@ $nombre_cliente = $ems['cliente'] ?? $solar['cliente'] ?? $recibo['cliente'] ?? 
 
                 <div class="pay-box">
                     <div class="pay-title">Condiciones de Pago</div>
-                    <div class="pay-row"><span>Anticipo 60%:</span><strong><?php echo htmlspecialchars($ems['anticipo']); ?></strong></div>
-                    <div class="pay-row"><span>Una vez colocado, el restante 40%:</span><strong><?php echo htmlspecialchars($ems['restante']); ?></strong></div>
+                    <div class="pay-row">
+                        <span>Anticipo 60%:</span>
+                        <span class="pay-val-wrap"><span>$</span><strong><?php echo $fmtMoney($ems['anticipo']); ?></strong></span>
+                    </div>
+                    <div class="pay-row">
+                        <span>Una vez colocado, el restante 40%:</span>
+                        <span class="pay-val-wrap"><span>$</span><strong><?php echo $fmtMoney($ems['restante']); ?></strong></span>
+                    </div>
                 </div>
 
                 <?php if (!empty($ems['costo_fabricacion']) && $ems['costo_fabricacion'] !== '$0.00'): ?>
@@ -688,7 +750,8 @@ $nombre_cliente = $ems['cliente'] ?? $solar['cliente'] ?? $recibo['cliente'] ?? 
                             <span><?php echo htmlspecialchars($dem_ems ?: 'EMS'); ?></span>
                         </div>
                         <div class="fab-grid">
-                            <div><strong><?php echo $lbl_fab; ?>:</strong> <?php echo htmlspecialchars($ems['dato_fabricacion'] ?: '—'); ?></div>
+                            <div><strong><?php echo $lbl_fab; ?>:</strong>
+                                <?php echo htmlspecialchars($ems['dato_fabricacion'] ?: '—'); ?></div>
                             <div class="fab-total">Total: <?php echo htmlspecialchars($ems['costo_fabricacion']); ?></div>
                         </div>
                     </div>
